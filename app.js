@@ -220,7 +220,7 @@ function initMap() {
   }
 
   map = L.map("map", {
-    scrollWheelZoom: false,
+    scrollWheelZoom: !isMobileViewport(),
     zoomControl: false
   }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
@@ -240,6 +240,7 @@ function initMap() {
   window.addEventListener("resize", () => {
     map.invalidateSize();
     syncZoomControlPosition();
+    syncScrollWheelZoom();
     updateMobileUI();
     updateDesktopUI();
   });
@@ -527,6 +528,19 @@ function syncZoomControlPosition() {
     position: nextPosition
   }).addTo(map);
   zoomControlPosition = nextPosition;
+}
+
+function syncScrollWheelZoom() {
+  if (!map) {
+    return;
+  }
+
+  if (isMobileViewport()) {
+    map.scrollWheelZoom.disable();
+    return;
+  }
+
+  map.scrollWheelZoom.enable();
 }
 
 function initContributionMarker() {
