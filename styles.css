@@ -780,7 +780,57 @@ h2 {
   }
 
   .pressure-options {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+  }
+
+  .pressure-option-card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 12px 14px;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .pressure-icons,
+  .pressure-icons-square {
+    flex: 0 0 auto;
+    min-width: 28px;
+    min-height: 20px;
+    justify-content: center;
+  }
+
+  .pressure-icons-square {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 2px 4px;
+    grid-template-columns: none;
+  }
+
+  .pressure-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: auto;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .pressure-level-text {
+    display: inline;
+    margin-bottom: 0;
+    font-size: 0.88rem;
+  }
+
+  .pressure-name-text {
+    display: inline;
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    max-width: none;
+    overflow-wrap: normal;
   }
 
   .pin-helper {
@@ -798,10 +848,6 @@ h2 {
   .stat-card {
     padding: 18px;
     border-radius: 20px;
-  }
-
-  .pressure-options {
-    grid-template-columns: 1fr;
   }
 
   .form-actions {
