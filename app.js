@@ -59,6 +59,11 @@ const state = {
   },
   ui: {
     mobileTab: "listings"
+  },
+  draft: {
+    nameTouched: false,
+    locationTouched: false,
+    geocodeRequestId: 0
   }
 };
 
@@ -74,7 +79,13 @@ const elements = {
   mapSummary: document.querySelector("#map-summary"),
   cardGrid: document.querySelector("#card-grid"),
   form: document.querySelector("#listing-form"),
+  nameInput: document.querySelector('input[name="name"]'),
+  locationInput: document.querySelector('input[name="location"]'),
+  latitudeInput: document.querySelector('input[name="latitude"]'),
+  longitudeInput: document.querySelector('input[name="longitude"]'),
   resetButton: document.querySelector("#reset-demo"),
+  pinStatus: document.querySelector("#pin-status"),
+  focusPinButton: document.querySelector("#focus-pin"),
   cardTemplate: document.querySelector("#toilet-card-template"),
   mobileTabButtons: document.querySelectorAll("[data-mobile-tab-button]"),
   mobilePanels: document.querySelectorAll("[data-mobile-panel]"),
@@ -85,12 +96,22 @@ let map;
 let markerLayer;
 let zoomControl;
 let zoomControlPosition;
+let contributionMarker;
+let contributionMarkerVisible = false;
 
 bindEvents();
 initMap();
 render();
 
 function bindEvents() {
+  elements.nameInput.addEventListener("input", () => {
+    state.draft.nameTouched = true;
+  });
+
+  elements.locationInput.addEventListener("input", () => {
+    state.draft.locationTouched = true;
+  });
+
   elements.mobileTabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       setMobileTab(button.dataset.mobileTabButton);
@@ -106,6 +127,19 @@ function bindEvents() {
         setMobileTab(targetTab);
       }
     });
+  });
+
+  elements.focusPinButton.addEventListener("click", () => {
+    if (!map || !contributionMarker) {
+      return;
+    }
+
+    if (isMobileViewport() && state.ui.mobileTab !== "add") {
+      state.ui.mobileTab = "add";
+      updateMobileUI();
+    }
+
+    focusContributionPin();
   });
 
   elements.searchInput.addEventListener("input", (event) => {
@@ -147,12 +181,14 @@ function bindEvents() {
     state.listings = [newListing, ...state.listings];
     persistListings();
     elements.form.reset();
+    resetContributionDraft();
     render();
   });
 
   elements.resetButton.addEventListener("click", () => {
     state.listings = defaultListings.map((listing, index) => normalizeListing(listing, index));
     persistListings();
+    resetContributionDraft();
     render();
   });
 }
@@ -179,6 +215,7 @@ function initMap() {
   }).addTo(map);
 
   markerLayer = L.layerGroup().addTo(map);
+  initContributionMarker();
   window.setTimeout(() => map.invalidateSize(), 0);
   window.addEventListener("resize", () => {
     map.invalidateSize();
@@ -387,6 +424,10 @@ function setMobileTab(tab) {
   }
 
   render();
+
+  if (state.ui.mobileTab === "add") {
+    focusContributionPin();
+  }
 }
 
 function updateMobileUI() {
@@ -400,6 +441,8 @@ function updateMobileUI() {
     const isActive = !isMobileViewport() || panel.dataset.mobilePanel === state.ui.mobileTab;
     panel.classList.toggle("is-active", isActive);
   });
+
+  updateContributionMarkerVisibility();
 }
 
 function isMobileViewport() {
@@ -422,6 +465,183 @@ function syncZoomControlPosition() {
     position: nextPosition
   }).addTo(map);
   zoomControlPosition = nextPosition;
+}
+
+function initContributionMarker() {
+  if (!map || contributionMarker) {
+    return;
+  }
+
+  contributionMarker = L.marker(DEFAULT_CENTER, {
+    draggable: true,
+    keyboard: true,
+    title: "Contribution pin",
+    icon: L.divIcon({
+      className: "contribution-pin-wrapper",
+      html: '<div class="contribution-pin"></div>',
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    })
+  });
+
+  contributionMarker.on("dragstart", () => {
+    elements.pinStatus.textContent = "Pin moved. Looking up the nearest location details...";
+  });
+
+  contributionMarker.on("dragend", () => {
+    const position = contributionMarker.getLatLng();
+    applyContributionPosition(position.lat, position.lng);
+  });
+
+  resetContributionDraft();
+  updateContributionMarkerVisibility();
+}
+
+function updateContributionMarkerVisibility() {
+  if (!map || !contributionMarker) {
+    return;
+  }
+
+  const shouldShow = !isMobileViewport() || state.ui.mobileTab === "add";
+
+  if (shouldShow && !contributionMarkerVisible) {
+    contributionMarker.addTo(map);
+    contributionMarkerVisible = true;
+  }
+
+  if (!shouldShow && contributionMarkerVisible) {
+    contributionMarker.remove();
+    contributionMarkerVisible = false;
+  }
+}
+
+function focusContributionPin() {
+  if (!map || !contributionMarker) {
+    return;
+  }
+
+  const markerPoint = map.latLngToContainerPoint(contributionMarker.getLatLng());
+  const targetPoint = getContributionPinTargetPoint();
+  const offset = [
+    markerPoint.x - targetPoint.x,
+    markerPoint.y - targetPoint.y
+  ];
+
+  map.panBy(offset, {
+    animate: true,
+    duration: 0.4
+  });
+}
+
+function resetContributionDraft() {
+  state.draft.nameTouched = false;
+  state.draft.locationTouched = false;
+
+  elements.nameInput.value = "";
+  elements.locationInput.value = "";
+  elements.pinStatus.textContent = "Drag the orange pin on the map to the right spot. We will suggest the location details automatically.";
+
+  if (!contributionMarker) {
+    return;
+  }
+
+  const position = map ? map.getCenter() : { lat: DEFAULT_CENTER[0], lng: DEFAULT_CENTER[1] };
+  contributionMarker.setLatLng(position);
+  applyContributionPosition(position.lat, position.lng);
+}
+
+function applyContributionPosition(latitude, longitude) {
+  elements.latitudeInput.value = String(latitude);
+  elements.longitudeInput.value = String(longitude);
+  reverseGeocode(latitude, longitude);
+}
+
+async function reverseGeocode(latitude, longitude) {
+  const requestId = state.draft.geocodeRequestId + 1;
+  state.draft.geocodeRequestId = requestId;
+  elements.pinStatus.textContent = "Pin placed. Looking up nearby location details...";
+
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+      {
+        headers: {
+          Accept: "application/json"
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Reverse geocoding failed");
+    }
+
+    const result = await response.json();
+
+    if (requestId !== state.draft.geocodeRequestId) {
+      return;
+    }
+
+    const suggestedName = buildSuggestedName(result);
+    const suggestedLocation = result.display_name || `Pinned location at ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+
+    if (!state.draft.nameTouched) {
+      elements.nameInput.value = suggestedName;
+    }
+
+    if (!state.draft.locationTouched) {
+      elements.locationInput.value = suggestedLocation;
+    }
+
+    elements.pinStatus.textContent = "Pin placed. Suggested name and location are ready to review.";
+  } catch {
+    if (requestId !== state.draft.geocodeRequestId) {
+      return;
+    }
+
+    if (!state.draft.locationTouched) {
+      elements.locationInput.value = `Pinned location at ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+    }
+
+    if (!state.draft.nameTouched && !elements.nameInput.value.trim()) {
+      elements.nameInput.value = "Pinned restroom";
+    }
+
+    elements.pinStatus.textContent = "Pin placed. We could not fetch the address, so you can fill in the details manually.";
+  }
+}
+
+function buildSuggestedName(result) {
+  const address = result.address || {};
+
+  return (
+    result.name ||
+    address.amenity ||
+    address.building ||
+    address.shop ||
+    address.tourism ||
+    address.road ||
+    "Pinned restroom"
+  );
+}
+
+function getContributionPinTargetPoint() {
+  if (!map) {
+    return { x: 0, y: 0 };
+  }
+
+  const size = map.getSize();
+
+  if (isMobileViewport()) {
+    return {
+      x: size.x / 2,
+      y: size.y * 0.42
+    };
+  }
+
+  return {
+    x: size.x * 0.58,
+    y: size.y * 0.48
+  };
 }
 
 function clampCleanliness(value) {

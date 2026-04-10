@@ -125,6 +125,16 @@
           </div>
 
           <form id="listing-form" class="listing-form">
+            <div class="pin-helper full-width">
+              <div>
+                <p class="pin-helper-title">Place the toilet pin on the map</p>
+                <p id="pin-status" class="pin-helper-text">
+                  Drag the orange pin on the map to the right spot. We will suggest the location details automatically.
+                </p>
+              </div>
+              <button id="focus-pin" type="button" class="button secondary pin-helper-button">Focus pin</button>
+            </div>
+
             <label class="field">
               <span>Name</span>
               <input name="name" type="text" placeholder="Central Mall 2F Restroom" required>
@@ -135,15 +145,8 @@
               <input name="location" type="text" placeholder="Makati, 2nd floor near food court" required>
             </label>
 
-            <label class="field">
-              <span>Latitude</span>
-              <input name="latitude" type="number" step="any" placeholder="14.5547" required>
-            </label>
-
-            <label class="field">
-              <span>Longitude</span>
-              <input name="longitude" type="number" step="any" placeholder="121.0244" required>
-            </label>
+            <input name="latitude" type="hidden">
+            <input name="longitude" type="hidden">
 
             <label class="field">
               <span>Has bidet?</span>

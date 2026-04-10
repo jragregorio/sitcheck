@@ -182,13 +182,16 @@ h2 {
 }
 
 .form-actions {
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
+  width: 100%;
+  grid-column: 1 / -1;
 }
 
 .form-actions .button {
-  flex: 0 0 auto;
-  min-width: 156px;
+  width: 100%;
+  min-width: 0;
   min-height: 44px;
   border-radius: 999px;
   font-size: 1rem;
@@ -266,6 +269,20 @@ h2 {
   font-family: "Inter", sans-serif;
 }
 
+.contribution-pin-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.contribution-pin {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ff9f43 0%, #ff6b35 100%);
+  box-shadow: 0 12px 28px rgba(255, 107, 53, 0.42);
+}
+
 .leaflet-bottom.leaflet-left .leaflet-control-zoom {
   margin-left: 20px;
   margin-bottom: 20px;
@@ -310,6 +327,38 @@ h2 {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 14px;
+}
+
+.pin-helper {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(238, 244, 255, 0.82);
+}
+
+.pin-helper-title,
+.pin-helper-text {
+  margin-bottom: 0;
+}
+
+.pin-helper-title {
+  margin-bottom: 6px;
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.pin-helper-text {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.pin-helper-button {
+  flex-shrink: 0;
 }
 
 .field {
@@ -569,16 +618,29 @@ h2 {
   }
 
   .leaflet-top.leaflet-right .leaflet-control-zoom {
-    margin-top: 86px;
+    margin-top: 182px;
     margin-right: 12px;
+  }
+
+  .leaflet-top.leaflet-right .leaflet-control-zoom a {
+    width: 48px;
+    height: 48px;
+    line-height: 46px;
+    font-size: 1.5rem;
+    font-weight: 700;
   }
 
   .field {
     grid-column: 1 / -1;
   }
 
-  .form-actions {
-    flex-wrap: wrap;
+  .pin-helper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pin-helper-button {
+    width: 100%;
   }
 }
 
@@ -587,6 +649,16 @@ h2 {
   .stat-card {
     padding: 18px;
     border-radius: 20px;
+  }
+
+  .form-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .form-actions .button {
+    min-height: 42px;
+    font-size: 0.95rem;
   }
 
   h1 {
