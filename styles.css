@@ -361,6 +361,115 @@ h2 {
   flex-shrink: 0;
 }
 
+.pressure-fieldset {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pressure-fieldset legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+
+.pressure-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+.pressure-option {
+  display: flex;
+}
+
+.pressure-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pressure-option-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 140px;
+  height: 100%;
+  padding: 14px 10px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  text-align: center;
+  cursor: pointer;
+  transition: 150ms ease;
+}
+
+.pressure-option input:checked + .pressure-option-card {
+  border-color: rgba(36, 87, 245, 0.34);
+  background: rgba(238, 244, 255, 0.95);
+  box-shadow: 0 10px 24px rgba(36, 87, 245, 0.1);
+}
+
+.pressure-option-card:hover {
+  border-color: rgba(36, 87, 245, 0.22);
+}
+
+.pressure-icons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  min-height: 24px;
+}
+
+.pressure-icons-square {
+  display: grid;
+  grid-template-columns: repeat(2, 12px);
+  justify-content: center;
+  gap: 4px 6px;
+}
+
+.pressure-drop {
+  width: 12px;
+  height: 16px;
+  background: linear-gradient(180deg, #53b6ff 0%, #2457f5 100%);
+  clip-path: path("M6 0 C8 4 12 7 12 11 C12 14.3 9.3 17 6 17 C2.7 17 0 14.3 0 11 C0 7 4 4 6 0 Z");
+}
+
+.pressure-label {
+  display: block;
+  width: 100%;
+  text-align: center;
+  color: var(--text);
+}
+
+.pressure-level-text,
+.pressure-name-text {
+  display: block;
+}
+
+.pressure-level-text {
+  margin-bottom: 4px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.pressure-name-text {
+  max-width: 8ch;
+  margin: 0 auto;
+  font-size: clamp(0.72rem, 0.9vw, 0.82rem);
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -454,6 +563,38 @@ h2 {
   color: var(--warning-text);
 }
 
+.pressure-row {
+  margin-bottom: 14px;
+}
+
+.pressure-badge {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(238, 244, 255, 0.82);
+}
+
+.pressure-badge-title,
+.pressure-badge-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.pressure-badge-title {
+  color: var(--primary-dark);
+}
+
+.pressure-badge-label {
+  color: var(--muted);
+}
+
+.pressure-inline {
+  white-space: nowrap;
+}
+
 .card-notes {
   min-height: 48px;
   line-height: 1.6;
@@ -484,6 +625,10 @@ h2 {
 
   .overlay-columns {
     grid-template-columns: 1fr;
+  }
+
+  .pressure-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -634,6 +779,10 @@ h2 {
     grid-column: 1 / -1;
   }
 
+  .pressure-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .pin-helper {
     flex-direction: column;
     align-items: stretch;
@@ -649,6 +798,10 @@ h2 {
   .stat-card {
     padding: 18px;
     border-radius: 20px;
+  }
+
+  .pressure-options {
+    grid-template-columns: 1fr;
   }
 
   .form-actions {

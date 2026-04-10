@@ -167,6 +167,82 @@
               </select>
             </label>
 
+            <fieldset class="pressure-fieldset full-width">
+              <legend>Pressure level</legend>
+              <div class="pressure-options" role="radiogroup" aria-label="Pressure level">
+                <label class="pressure-option">
+                  <input type="radio" name="pressureLevel" value="1">
+                  <span class="pressure-option-card">
+                    <span class="pressure-icons" aria-hidden="true">
+                      <span class="pressure-drop"></span>
+                    </span>
+                    <span class="pressure-label">
+                      <span class="pressure-level-text">1 -</span>
+                      <span class="pressure-name-text">Polite Drizzle</span>
+                    </span>
+                  </span>
+                </label>
+                <label class="pressure-option">
+                  <input type="radio" name="pressureLevel" value="2">
+                  <span class="pressure-option-card">
+                    <span class="pressure-icons" aria-hidden="true">
+                      <span class="pressure-drop"></span>
+                      <span class="pressure-drop"></span>
+                    </span>
+                    <span class="pressure-label">
+                      <span class="pressure-level-text">2 -</span>
+                      <span class="pressure-name-text">Gentle Splash</span>
+                    </span>
+                  </span>
+                </label>
+                <label class="pressure-option">
+                  <input type="radio" name="pressureLevel" value="3" checked>
+                  <span class="pressure-option-card">
+                    <span class="pressure-icons" aria-hidden="true">
+                      <span class="pressure-drop"></span>
+                      <span class="pressure-drop"></span>
+                      <span class="pressure-drop"></span>
+                    </span>
+                    <span class="pressure-label">
+                      <span class="pressure-level-text">3 -</span>
+                      <span class="pressure-name-text">Steady Spray</span>
+                    </span>
+                  </span>
+                </label>
+                <label class="pressure-option">
+                  <input type="radio" name="pressureLevel" value="4">
+                  <span class="pressure-option-card">
+                    <span class="pressure-icons pressure-icons-square" aria-hidden="true">
+                      <span class="pressure-drop"></span>
+                      <span class="pressure-drop"></span>
+                      <span class="pressure-drop"></span>
+                      <span class="pressure-drop"></span>
+                    </span>
+                    <span class="pressure-label">
+                      <span class="pressure-level-text">4 -</span>
+                      <span class="pressure-name-text">Power Rinse</span>
+                    </span>
+                  </span>
+                </label>
+                <label class="pressure-option">
+                  <input type="radio" name="pressureLevel" value="5">
+                  <span class="pressure-option-card">
+                    <span class="pressure-icons" aria-hidden="true">
+                      <span class="pressure-drop"></span>
+                      <span class="pressure-drop"></span>
+                      <span class="pressure-drop"></span>
+                      <span class="pressure-drop"></span>
+                      <span class="pressure-drop"></span>
+                    </span>
+                    <span class="pressure-label">
+                      <span class="pressure-level-text">5 -</span>
+                      <span class="pressure-name-text">Firehose Energy</span>
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
             <label class="field">
               <span>Payment required?</span>
               <select name="paymentRequired">
@@ -214,6 +290,7 @@
         <span class="cleanliness-badge"></span>
       </div>
       <div class="tag-row"></div>
+      <div class="pressure-row"></div>
       <p class="card-notes"></p>
       <div class="card-footer">
         <span class="card-fee"></span>

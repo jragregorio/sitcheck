@@ -10,6 +10,7 @@ const defaultListings = [
     longitude: 121.0246,
     hasBidet: true,
     cleanliness: 4,
+    pressureLevel: 4,
     paymentRequired: true,
     fee: 10,
     notes: "Well-maintained and usually stocked, but the queue gets longer after lunch."
@@ -21,6 +22,7 @@ const defaultListings = [
     longitude: 121.0234,
     hasBidet: false,
     cleanliness: 3,
+    pressureLevel: 2,
     paymentRequired: false,
     fee: 0,
     notes: "Free access and easy to find, though supplies can run low during busy hours."
@@ -32,6 +34,7 @@ const defaultListings = [
     longitude: 121.0311,
     hasBidet: true,
     cleanliness: 5,
+    pressureLevel: 5,
     paymentRequired: false,
     fee: 0,
     notes: "Clean, accessible, and reliable for commuters needing a quick stop."
@@ -43,6 +46,7 @@ const defaultListings = [
     longitude: 121.0437,
     hasBidet: false,
     cleanliness: 2,
+    pressureLevel: 1,
     paymentRequired: true,
     fee: 5,
     notes: "Basic setup, small maintenance fee, and best used before midday rush."
@@ -173,6 +177,7 @@ function bindEvents() {
       longitude: formData.get("longitude"),
       hasBidet: formData.get("hasBidet") === "true",
       cleanliness: formData.get("cleanliness"),
+      pressureLevel: formData.get("pressureLevel"),
       paymentRequired: formData.get("paymentRequired") === "true",
       fee: formData.get("fee"),
       notes: formData.get("notes")
@@ -303,6 +308,7 @@ function renderCards(listings) {
     const tagRow = fragment.querySelector(".tag-row");
     tagRow.appendChild(buildTag(listing.hasBidet ? "Bidet available" : "No bidet"));
     tagRow.appendChild(buildTag(listing.paymentRequired ? "Paid entry" : "Free entry", listing.paymentRequired));
+    fragment.querySelector(".pressure-row").appendChild(buildPressureBadge(listing.pressureLevel));
 
     elements.cardGrid.appendChild(fragment);
   });
@@ -356,6 +362,7 @@ function buildPopupMarkup(listing) {
         <span class="tag">${listing.hasBidet ? "Bidet available" : "No bidet"}</span>
         <span class="tag">${feeText}</span>
         <span class="tag">Cleanliness ${listing.cleanliness}/5</span>
+        <span class="tag pressure-inline">${escapeHtml(getPressureSummary(listing.pressureLevel))}</span>
       </div>
     </div>
   `;
@@ -373,6 +380,7 @@ function normalizeListing(listing, index) {
     longitude: Number.isFinite(longitude) ? longitude : fallback.longitude,
     hasBidet: Boolean(listing.hasBidet),
     cleanliness: clampCleanliness(Number(listing.cleanliness)),
+    pressureLevel: clampPressure(Number(listing.pressureLevel)),
     paymentRequired: Boolean(listing.paymentRequired),
     fee: Math.max(0, Number(listing.fee) || 0),
     notes: String(listing.notes || "No additional notes yet.").trim()
@@ -642,6 +650,60 @@ function getContributionPinTargetPoint() {
     x: size.x * 0.58,
     y: size.y * 0.48
   };
+}
+
+function clampPressure(value) {
+  if (!Number.isFinite(value)) {
+    return 3;
+  }
+
+  return Math.min(5, Math.max(1, Math.round(value)));
+}
+
+function getPressureLabel(level) {
+  const labels = {
+    1: "Polite drizzle",
+    2: "Gentle splash",
+    3: "Steady spray",
+    4: "Power rinse",
+    5: "Firehose energy"
+  };
+
+  return labels[level] || "Steady spray";
+}
+
+function getPressureSummary(level) {
+  return `${renderPressureText(level)} ${getPressureLabel(level)}`;
+}
+
+function renderPressureText(level) {
+  return `${level} ${level === 1 ? "drop" : "drops"} -`;
+}
+
+function buildPressureBadge(level) {
+  const badge = document.createElement("div");
+  badge.className = "pressure-badge";
+
+  const title = document.createElement("span");
+  title.className = "pressure-badge-title";
+  title.textContent = "Pressure";
+
+  const icons = document.createElement("span");
+  icons.className = "pressure-icons";
+  icons.setAttribute("aria-hidden", "true");
+
+  for (let i = 0; i < level; i += 1) {
+    const drop = document.createElement("span");
+    drop.className = "pressure-drop";
+    icons.appendChild(drop);
+  }
+
+  const label = document.createElement("span");
+  label.className = "pressure-badge-label";
+  label.textContent = `${level}/5 - ${getPressureLabel(level)}`;
+
+  badge.append(title, icons, label);
+  return badge;
 }
 
 function clampCleanliness(value) {
