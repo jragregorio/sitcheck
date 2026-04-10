@@ -139,8 +139,13 @@ function initMap() {
   }
 
   map = L.map("map", {
-    scrollWheelZoom: true
+    scrollWheelZoom: false,
+    zoomControl: false
   }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+
+  L.control.zoom({
+    position: "bottomleft"
+  }).addTo(map);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,

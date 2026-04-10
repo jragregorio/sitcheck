@@ -257,6 +257,11 @@ h2 {
   font-family: "Inter", sans-serif;
 }
 
+.leaflet-bottom.leaflet-left .leaflet-control-zoom {
+  margin-left: 20px;
+  margin-bottom: 20px;
+}
+
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   box-shadow: 0 18px 40px rgba(19, 34, 56, 0.18);
