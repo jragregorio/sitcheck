@@ -7,6 +7,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  >
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -20,7 +26,8 @@
           bidet availability, cleanliness, payment, and location notes.
         </p>
         <div class="hero-actions">
-          <a class="button primary" href="#toilet-list">Browse toilets</a>
+          <a class="button primary" href="#map-section">Open map</a>
+          <a class="button secondary" href="#toilet-list">Browse toilets</a>
           <a class="button secondary" href="#add-form">Add a listing</a>
         </div>
       </div>
@@ -37,6 +44,18 @@
     </header>
 
     <main>
+      <section id="map-section" class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-kicker">Map view</p>
+            <h2>Find toilets near the area you need</h2>
+          </div>
+          <p id="map-summary" class="section-note">Loading map...</p>
+        </div>
+
+        <div id="map" class="map-panel" aria-label="Map of toilet locations"></div>
+      </section>
+
       <section class="stats">
         <article class="stat-card">
           <span id="total-count" class="stat-value">0</span>
@@ -130,6 +149,16 @@
           </label>
 
           <label class="field">
+            <span>Latitude</span>
+            <input name="latitude" type="number" step="any" placeholder="14.5547" required>
+          </label>
+
+          <label class="field">
+            <span>Longitude</span>
+            <input name="longitude" type="number" step="any" placeholder="121.0244" required>
+          </label>
+
+          <label class="field">
             <span>Has bidet?</span>
             <select name="hasBidet">
               <option value="true">Yes</option>
@@ -192,6 +221,11 @@
     </article>
   </template>
 
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
   <script src="app.js"></script>
 </body>
 </html>

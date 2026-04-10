@@ -1,9 +1,13 @@
 const STORAGE_KEY = "sitcheck-demo-listings";
+const DEFAULT_CENTER = [14.5547, 121.0244];
+const DEFAULT_ZOOM = 12;
 
 const defaultListings = [
   {
     name: "Central Mall 2F Restroom",
     location: "Makati, near the food court",
+    latitude: 14.5528,
+    longitude: 121.0246,
     hasBidet: true,
     cleanliness: 4,
     paymentRequired: true,
@@ -13,6 +17,8 @@ const defaultListings = [
   {
     name: "Ayala Triangle Park Comfort Room",
     location: "Legazpi Village park entrance",
+    latitude: 14.5563,
+    longitude: 121.0234,
     hasBidet: false,
     cleanliness: 3,
     paymentRequired: false,
@@ -22,6 +28,8 @@ const defaultListings = [
   {
     name: "North Station Concourse Restroom",
     location: "Transit level beside ticketing",
+    latitude: 14.6549,
+    longitude: 121.0311,
     hasBidet: true,
     cleanliness: 5,
     paymentRequired: false,
@@ -31,6 +39,8 @@ const defaultListings = [
   {
     name: "Weekend Market Washroom",
     location: "Open-air market rear side",
+    latitude: 14.676,
+    longitude: 121.0437,
     hasBidet: false,
     cleanliness: 2,
     paymentRequired: true,
@@ -58,13 +68,18 @@ const elements = {
   bidetCount: document.querySelector("#bidet-count"),
   freeCount: document.querySelector("#free-count"),
   resultsSummary: document.querySelector("#results-summary"),
+  mapSummary: document.querySelector("#map-summary"),
   cardGrid: document.querySelector("#card-grid"),
   form: document.querySelector("#listing-form"),
   resetButton: document.querySelector("#reset-demo"),
   cardTemplate: document.querySelector("#toilet-card-template")
 };
 
+let map;
+let markerLayer;
+
 bindEvents();
+initMap();
 render();
 
 function bindEvents() {
@@ -92,15 +107,17 @@ function bindEvents() {
     event.preventDefault();
     const formData = new FormData(elements.form);
 
-    const newListing = {
-      name: formData.get("name").toString().trim(),
-      location: formData.get("location").toString().trim(),
+    const newListing = normalizeListing({
+      name: formData.get("name"),
+      location: formData.get("location"),
+      latitude: formData.get("latitude"),
+      longitude: formData.get("longitude"),
       hasBidet: formData.get("hasBidet") === "true",
-      cleanliness: Number(formData.get("cleanliness")),
+      cleanliness: formData.get("cleanliness"),
       paymentRequired: formData.get("paymentRequired") === "true",
-      fee: Number(formData.get("fee")) || 0,
-      notes: formData.get("notes").toString().trim() || "No additional notes yet."
-    };
+      fee: formData.get("fee"),
+      notes: formData.get("notes")
+    }, state.listings.length);
 
     state.listings = [newListing, ...state.listings];
     persistListings();
@@ -109,15 +126,35 @@ function bindEvents() {
   });
 
   elements.resetButton.addEventListener("click", () => {
-    state.listings = [...defaultListings];
+    state.listings = defaultListings.map((listing, index) => normalizeListing(listing, index));
     persistListings();
     render();
   });
 }
 
+function initMap() {
+  if (typeof window.L === "undefined") {
+    elements.mapSummary.textContent = "Map library could not be loaded.";
+    return;
+  }
+
+  map = L.map("map", {
+    scrollWheelZoom: false
+  }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  markerLayer = L.layerGroup().addTo(map);
+  window.setTimeout(() => map.invalidateSize(), 0);
+}
+
 function render() {
   const visibleListings = getFilteredListings();
   renderStats();
+  renderMap(visibleListings);
   renderCards(visibleListings);
   renderSummary(visibleListings);
 }
@@ -126,6 +163,42 @@ function renderStats() {
   elements.totalCount.textContent = state.listings.length;
   elements.bidetCount.textContent = state.listings.filter((listing) => listing.hasBidet).length;
   elements.freeCount.textContent = state.listings.filter((listing) => !listing.paymentRequired).length;
+}
+
+function renderMap(listings) {
+  if (!map || !markerLayer) {
+    return;
+  }
+
+  markerLayer.clearLayers();
+
+  if (!listings.length) {
+    map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    elements.mapSummary.textContent = "No map pins match the current filters.";
+    return;
+  }
+
+  const bounds = [];
+
+  listings.forEach((listing) => {
+    if (!Number.isFinite(listing.latitude) || !Number.isFinite(listing.longitude)) {
+      return;
+    }
+
+    const marker = L.marker([listing.latitude, listing.longitude]);
+    marker.bindPopup(buildPopupMarkup(listing));
+    marker.addTo(markerLayer);
+    bounds.push([listing.latitude, listing.longitude]);
+  });
+
+  if (bounds.length) {
+    map.fitBounds(bounds, { padding: [32, 32], maxZoom: 16 });
+  } else {
+    map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+  }
+
+  const suffix = listings.length === 1 ? "pin" : "pins";
+  elements.mapSummary.textContent = `Showing ${listings.length} ${suffix} on the map.`;
 }
 
 function renderCards(listings) {
@@ -194,21 +267,86 @@ function buildTag(text, warning = false) {
   return tag;
 }
 
+function buildPopupMarkup(listing) {
+  const feeText = listing.paymentRequired ? `Fee: PHP ${listing.fee || 0}` : "Free access";
+
+  return `
+    <div class="map-popup">
+      <h3>${escapeHtml(listing.name)}</h3>
+      <p>${escapeHtml(listing.location)}</p>
+      <div class="popup-meta">
+        <span class="tag">${listing.hasBidet ? "Bidet available" : "No bidet"}</span>
+        <span class="tag">${feeText}</span>
+        <span class="tag">Cleanliness ${listing.cleanliness}/5</span>
+      </div>
+    </div>
+  `;
+}
+
+function normalizeListing(listing, index) {
+  const fallback = getFallbackCoordinates(index);
+  const latitude = Number(listing.latitude);
+  const longitude = Number(listing.longitude);
+
+  return {
+    name: String(listing.name || "Unnamed restroom").trim(),
+    location: String(listing.location || "Location not provided").trim(),
+    latitude: Number.isFinite(latitude) ? latitude : fallback.latitude,
+    longitude: Number.isFinite(longitude) ? longitude : fallback.longitude,
+    hasBidet: Boolean(listing.hasBidet),
+    cleanliness: clampCleanliness(Number(listing.cleanliness)),
+    paymentRequired: Boolean(listing.paymentRequired),
+    fee: Math.max(0, Number(listing.fee) || 0),
+    notes: String(listing.notes || "No additional notes yet.").trim()
+  };
+}
+
+function getFallbackCoordinates(index) {
+  const offset = index * 0.008;
+
+  return {
+    latitude: DEFAULT_CENTER[0] + offset,
+    longitude: DEFAULT_CENTER[1] + offset
+  };
+}
+
+function clampCleanliness(value) {
+  if (!Number.isFinite(value)) {
+    return 3;
+  }
+
+  return Math.min(5, Math.max(1, Math.round(value)));
+}
+
 function loadListings() {
   const storedValue = window.localStorage.getItem(STORAGE_KEY);
 
   if (!storedValue) {
-    return [...defaultListings];
+    return defaultListings.map((listing, index) => normalizeListing(listing, index));
   }
 
   try {
     const parsed = JSON.parse(storedValue);
-    return Array.isArray(parsed) && parsed.length ? parsed : [...defaultListings];
+
+    if (!Array.isArray(parsed) || !parsed.length) {
+      return defaultListings.map((listing, index) => normalizeListing(listing, index));
+    }
+
+    return parsed.map((listing, index) => normalizeListing(listing, index));
   } catch {
-    return [...defaultListings];
+    return defaultListings.map((listing, index) => normalizeListing(listing, index));
   }
 }
 
 function persistListings() {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state.listings));
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
