@@ -173,6 +173,20 @@ h2 {
   gap: 12px;
 }
 
+.form-actions {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.form-actions .button {
+  flex: 0 0 auto;
+  min-width: 156px;
+  min-height: 44px;
+  border-radius: 999px;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -445,6 +459,10 @@ h2 {
 
   .field {
     grid-column: 1 / -1;
+  }
+
+  .form-actions {
+    flex-wrap: wrap;
   }
 
   h1 {
