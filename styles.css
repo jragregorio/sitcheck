@@ -216,6 +216,11 @@ h2 {
   transition: 150ms ease;
 }
 
+.button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .button.primary {
   background: var(--primary);
   color: #fff;
@@ -287,9 +292,64 @@ h2 {
   box-shadow: 0 12px 28px rgba(255, 107, 53, 0.42);
 }
 
-.leaflet-bottom.leaflet-left .leaflet-control-zoom {
+.leaflet-control-map-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
   margin-left: 20px;
   margin-bottom: 20px;
+}
+
+.map-control-group {
+  overflow: hidden;
+  border-radius: 4px;
+  box-shadow: 0 12px 28px rgba(19, 34, 56, 0.16);
+}
+
+.map-control-zoom-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-control-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.map-control-button:hover {
+  background: #fff;
+}
+
+.map-control-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.map-control-zoom-button + .map-control-zoom-button {
+  border-top: 1px solid rgba(19, 34, 56, 0.12);
+}
+
+.map-control-zoom-button {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.map-control-locate-button svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
 }
 
 .leaflet-popup-content-wrapper,
@@ -825,15 +885,29 @@ h2 {
     color: #fff;
   }
 
-  .leaflet-top.leaflet-right .leaflet-control-zoom {
+  .leaflet-top.leaflet-right .leaflet-control-map-stack {
+    gap: 12px;
     margin-top: 182px;
     margin-right: 12px;
+    margin-bottom: 0;
+    margin-left: 0;
   }
 
-  .leaflet-top.leaflet-right .leaflet-control-zoom a {
+  .map-control-group {
+    border-radius: 6px;
+  }
+
+  .map-control-button {
     width: 48px;
     height: 48px;
-    line-height: 46px;
+  }
+
+  .map-control-locate-button svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .map-control-zoom-button {
     font-size: 1.5rem;
     font-weight: 700;
   }

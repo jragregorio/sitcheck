@@ -83,6 +83,7 @@ const elements = {
   resultsSummary: document.querySelector("#results-summary"),
   mapSummary: document.querySelector("#map-summary"),
   cardGrid: document.querySelector("#card-grid"),
+  locateButton: null,
   form: document.querySelector("#listing-form"),
   nameInput: document.querySelector('input[name="name"]'),
   locationInput: document.querySelector('input[name="location"]'),
@@ -103,10 +104,12 @@ const elements = {
 
 let map;
 let markerLayer;
-let zoomControl;
-let zoomControlPosition;
+let userLocationLayer;
+let mapControls;
+let mapControlsPosition;
 let contributionMarker;
 let contributionMarkerVisible = false;
+let isLocatingUser = false;
 
 bindEvents();
 initMap();
@@ -224,10 +227,7 @@ function initMap() {
     zoomControl: false
   }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
-  zoomControlPosition = getZoomControlPosition();
-  zoomControl = L.control.zoom({
-    position: zoomControlPosition
-  }).addTo(map);
+  syncMapControls(true);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -235,11 +235,12 @@ function initMap() {
   }).addTo(map);
 
   markerLayer = L.layerGroup().addTo(map);
+  userLocationLayer = L.layerGroup().addTo(map);
   initContributionMarker();
   window.setTimeout(() => map.invalidateSize(), 0);
   window.addEventListener("resize", () => {
     map.invalidateSize();
-    syncZoomControlPosition();
+    syncMapControls();
     syncScrollWheelZoom();
     updateMobileUI();
     updateDesktopUI();
@@ -300,6 +301,96 @@ function renderMap(listings) {
 
   const suffix = listings.length === 1 ? "pin" : "pins";
   elements.mapSummary.textContent = `Showing ${listings.length} ${suffix} on the map.`;
+}
+
+function locateUser() {
+  if (!map) {
+    elements.mapSummary.textContent = "Map is still loading.";
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    elements.mapSummary.textContent = "Current location is not supported by this browser.";
+    return;
+  }
+
+  setLocateButtonState(true);
+
+  navigator.geolocation.getCurrentPosition(
+    ({ coords }) => {
+      const latitude = coords.latitude;
+      const longitude = coords.longitude;
+      const accuracy = coords.accuracy;
+
+      renderUserLocation(latitude, longitude, accuracy);
+      map.flyTo([latitude, longitude], Math.max(map.getZoom(), 15), {
+        animate: true,
+        duration: 1
+      });
+      elements.mapSummary.textContent = "Centered on your current location.";
+      setLocateButtonState(false);
+    },
+    (error) => {
+      elements.mapSummary.textContent = getLocationErrorMessage(error);
+      setLocateButtonState(false);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 60000
+    }
+  );
+}
+
+function renderUserLocation(latitude, longitude, accuracy = 50) {
+  if (!userLocationLayer) {
+    return;
+  }
+
+  const latLng = [latitude, longitude];
+  userLocationLayer.clearLayers();
+
+  L.circle(latLng, {
+    radius: Math.max(accuracy, 30),
+    color: "#2457f5",
+    weight: 1.5,
+    opacity: 0.35,
+    fillColor: "#2457f5",
+    fillOpacity: 0.12
+  }).addTo(userLocationLayer);
+
+  L.circleMarker(latLng, {
+    radius: 8,
+    color: "#ffffff",
+    weight: 3,
+    fillColor: "#2457f5",
+    fillOpacity: 1
+  }).addTo(userLocationLayer);
+}
+
+function setLocateButtonState(isLocating) {
+  isLocatingUser = isLocating;
+
+  if (!elements.locateButton) {
+    return;
+  }
+
+  elements.locateButton.disabled = isLocating;
+  elements.locateButton.setAttribute("aria-label", isLocating ? "Locating current position" : "Use my location");
+  elements.locateButton.title = isLocating ? "Locating..." : "Use my location";
+}
+
+function getLocationErrorMessage(error) {
+  switch (error.code) {
+    case error.PERMISSION_DENIED:
+      return "Location permission was denied.";
+    case error.POSITION_UNAVAILABLE:
+      return "Current location could not be determined.";
+    case error.TIMEOUT:
+      return "Location request timed out. Please try again.";
+    default:
+      return "Unable to get your current location right now.";
+  }
 }
 
 function renderCards(listings) {
@@ -516,18 +607,80 @@ function getZoomControlPosition() {
   return isMobileViewport() ? "topright" : "bottomleft";
 }
 
-function syncZoomControlPosition() {
+function syncMapControls(force = false) {
   const nextPosition = getZoomControlPosition();
 
-  if (!map || !zoomControl || nextPosition === zoomControlPosition) {
+  if (!map || (!force && mapControls && nextPosition === mapControlsPosition)) {
     return;
   }
 
-  map.removeControl(zoomControl);
-  zoomControl = L.control.zoom({
-    position: nextPosition
-  }).addTo(map);
-  zoomControlPosition = nextPosition;
+  if (mapControls) {
+    map.removeControl(mapControls);
+  }
+
+  mapControls = createMapControls(nextPosition);
+  mapControlsPosition = nextPosition;
+}
+
+function createMapControls(position) {
+  const MapControls = L.Control.extend({
+    options: {
+      position
+    },
+    onAdd() {
+      const container = L.DomUtil.create("div", "leaflet-control-map-stack");
+      const zoomGroup = L.DomUtil.create("div", "map-control-group map-control-zoom-group leaflet-bar", container);
+      const zoomInButton = L.DomUtil.create("button", "map-control-button map-control-zoom-button", zoomGroup);
+      const zoomOutButton = L.DomUtil.create("button", "map-control-button map-control-zoom-button", zoomGroup);
+      const locateGroup = L.DomUtil.create("div", "map-control-group map-control-locate-group leaflet-bar", container);
+      const locateButton = L.DomUtil.create("button", "map-control-button map-control-locate-button", locateGroup);
+
+      zoomInButton.type = "button";
+      zoomInButton.title = "Zoom in";
+      zoomInButton.setAttribute("aria-label", "Zoom in");
+      zoomInButton.textContent = "+";
+
+      zoomOutButton.type = "button";
+      zoomOutButton.title = "Zoom out";
+      zoomOutButton.setAttribute("aria-label", "Zoom out");
+      zoomOutButton.textContent = "\u2212";
+
+      locateButton.type = "button";
+      locateButton.title = "Use my location";
+      locateButton.setAttribute("aria-label", "Use my location");
+      locateButton.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" stroke-width="2"></circle>
+          <path d="M12 2V5" stroke-width="2" stroke-linecap="round"></path>
+          <path d="M12 19V22" stroke-width="2" stroke-linecap="round"></path>
+          <path d="M2 12H5" stroke-width="2" stroke-linecap="round"></path>
+          <path d="M19 12H22" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      `;
+
+      elements.locateButton = locateButton;
+      setLocateButtonState(isLocatingUser);
+
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.disableScrollPropagation(container);
+      L.DomEvent.on(zoomInButton, "click", (event) => {
+        L.DomEvent.stop(event);
+        map.zoomIn();
+      });
+      L.DomEvent.on(zoomOutButton, "click", (event) => {
+        L.DomEvent.stop(event);
+        map.zoomOut();
+      });
+      L.DomEvent.on(locateButton, "click", (event) => {
+        L.DomEvent.stop(event);
+        locateUser();
+      });
+
+      return container;
+    }
+  });
+
+  return new MapControls().addTo(map);
 }
 
 function syncScrollWheelZoom() {
