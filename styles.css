@@ -663,6 +663,10 @@ h2 {
     pointer-events: auto;
   }
 
+  .overlay-column > .floating-panel {
+    flex-shrink: 0;
+  }
+
   .overlay-column::-webkit-scrollbar {
     width: 8px;
   }
