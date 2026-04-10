@@ -58,7 +58,7 @@ const state = {
     cleanliness: 0
   },
   ui: {
-    mobileTab: "listings"
+    mobileTab: null
   },
   draft: {
     nameTouched: false,
