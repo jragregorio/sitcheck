@@ -62,7 +62,8 @@ const state = {
     cleanliness: 0
   },
   ui: {
-    mobileTab: null
+    mobileTab: null,
+    desktopPanel: "listings"
   },
   draft: {
     nameTouched: false,
@@ -93,7 +94,11 @@ const elements = {
   cardTemplate: document.querySelector("#toilet-card-template"),
   mobileTabButtons: document.querySelectorAll("[data-mobile-tab-button]"),
   mobilePanels: document.querySelectorAll("[data-mobile-panel]"),
-  mobileTargetLinks: document.querySelectorAll("[data-mobile-target]")
+  mobileTargetLinks: document.querySelectorAll("[data-mobile-target]"),
+  desktopPanels: {
+    listings: document.querySelector("#toilet-list"),
+    add: document.querySelector("#add-form")
+  }
 };
 
 let map;
@@ -126,9 +131,19 @@ function bindEvents() {
     link.addEventListener("click", (event) => {
       const targetTab = link.dataset.mobileTarget;
 
-      if (targetTab && isMobileViewport()) {
+      if (!targetTab) {
+        return;
+      }
+
+      if (isMobileViewport()) {
         event.preventDefault();
         setMobileTab(targetTab);
+        return;
+      }
+
+      if (targetTab === "listings" || targetTab === "add") {
+        event.preventDefault();
+        setDesktopPanel(targetTab);
       }
     });
   });
@@ -226,12 +241,14 @@ function initMap() {
     map.invalidateSize();
     syncZoomControlPosition();
     updateMobileUI();
+    updateDesktopUI();
   });
 }
 
 function render() {
   const visibleListings = getFilteredListings();
   updateMobileUI();
+  updateDesktopUI();
   renderStats();
   renderMap(visibleListings);
   renderCards(visibleListings);
@@ -419,8 +436,8 @@ function getMapFitPadding() {
   }
 
   return {
-    topLeft: [360, 170],
-    bottomRight: [440, 32]
+    topLeft: [396, 220],
+    bottomRight: [476, 40]
   };
 }
 
@@ -438,6 +455,19 @@ function setMobileTab(tab) {
   }
 }
 
+function setDesktopPanel(panel) {
+  if (panel !== "listings" && panel !== "add") {
+    return;
+  }
+
+  state.ui.desktopPanel = panel;
+  updateDesktopUI();
+
+  if (panel === "add") {
+    focusContributionPin();
+  }
+}
+
 function updateMobileUI() {
   elements.mobileTabButtons.forEach((button) => {
     const isActive = button.dataset.mobileTabButton === state.ui.mobileTab;
@@ -446,8 +476,32 @@ function updateMobileUI() {
   });
 
   elements.mobilePanels.forEach((panel) => {
-    const isActive = !isMobileViewport() || panel.dataset.mobilePanel === state.ui.mobileTab;
+    const isActive = isMobileViewport() && panel.dataset.mobilePanel === state.ui.mobileTab;
     panel.classList.toggle("is-active", isActive);
+  });
+
+  updateContributionMarkerVisibility();
+}
+
+function updateDesktopUI() {
+  const isDesktop = !isMobileViewport();
+
+  elements.mobileTargetLinks.forEach((link) => {
+    const targetPanel = link.dataset.mobileTarget;
+    const isActive = isDesktop && targetPanel === state.ui.desktopPanel;
+
+    link.classList.toggle("primary", isActive);
+    link.classList.toggle("secondary", !isActive);
+  });
+
+  Object.entries(elements.desktopPanels).forEach(([panelName, panelElement]) => {
+    if (!panelElement) {
+      return;
+    }
+
+    const shouldHide = isDesktop && panelName !== state.ui.desktopPanel;
+    panelElement.classList.toggle("desktop-hidden", shouldHide);
+    panelElement.hidden = shouldHide;
   });
 
   updateContributionMarkerVisibility();
@@ -510,7 +564,9 @@ function updateContributionMarkerVisibility() {
     return;
   }
 
-  const shouldShow = !isMobileViewport() || state.ui.mobileTab === "add";
+  const shouldShow = isMobileViewport()
+    ? state.ui.mobileTab === "add"
+    : state.ui.desktopPanel === "add";
 
   if (shouldShow && !contributionMarkerVisible) {
     contributionMarker.addTo(map);

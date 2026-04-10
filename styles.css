@@ -57,6 +57,10 @@ body {
   display: none;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .floating-panel,
 .stat-card,
 .toilet-card {
@@ -616,6 +620,61 @@ h2 {
   border-radius: 20px;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.86);
+}
+
+@media (min-width: 1101px) {
+  body {
+    overflow: hidden;
+  }
+
+  .app-overlay {
+    min-height: 100vh;
+    padding: 20px;
+    gap: 0;
+  }
+
+  .hero-panel {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    z-index: 30;
+  }
+
+  .stats-panel {
+    display: none;
+  }
+
+  .overlay-columns {
+    position: fixed;
+    top: 230px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    grid-template-columns: 380px 460px;
+    justify-content: space-between;
+    align-items: start;
+  }
+
+  .overlay-column {
+    max-height: 100%;
+    overflow: auto;
+    padding-right: 4px;
+    pointer-events: auto;
+  }
+
+  .overlay-column::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .overlay-column::-webkit-scrollbar-thumb {
+    background: rgba(19, 34, 56, 0.18);
+    border-radius: 999px;
+  }
+
+  .desktop-hidden {
+    display: none;
+  }
 }
 
 @media (max-width: 1100px) {
