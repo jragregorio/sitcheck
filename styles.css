@@ -31,7 +31,8 @@ html {
 body {
   margin: 0;
   color: var(--text);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .map-canvas {
@@ -88,36 +89,22 @@ body {
 }
 
 .overlay-columns {
-  flex: 1;
   display: grid;
   grid-template-columns: minmax(300px, 380px) minmax(320px, 460px);
   justify-content: space-between;
   gap: 16px;
-  min-height: 0;
+  align-items: start;
 }
 
 .overlay-column {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-height: 0;
 }
 
 .overlay-left,
 .overlay-right {
-  overflow: auto;
-  padding-right: 4px;
-}
-
-.overlay-left::-webkit-scrollbar,
-.overlay-right::-webkit-scrollbar {
-  width: 8px;
-}
-
-.overlay-left::-webkit-scrollbar-thumb,
-.overlay-right::-webkit-scrollbar-thumb {
-  background: rgba(19, 34, 56, 0.18);
-  border-radius: 999px;
+  overflow: visible;
 }
 
 .eyebrow,
@@ -420,21 +407,12 @@ h2 {
 }
 
 @media (max-width: 1100px) {
-  body {
-    overflow: auto;
-  }
-
   .app-overlay {
     min-height: auto;
   }
 
   .overlay-columns {
     grid-template-columns: 1fr;
-  }
-
-  .overlay-left,
-  .overlay-right {
-    overflow: visible;
   }
 }
 
