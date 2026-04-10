@@ -33,8 +33,8 @@
         <p class="hero-card-label">Live map summary</p>
         <p id="map-summary" class="hero-summary">Loading map...</p>
         <div class="hero-actions">
-          <a class="button primary" href="#toilet-list">Open listings</a>
-          <a class="button secondary" href="#add-form">Add a toilet</a>
+          <a class="button primary" href="#toilet-list" data-mobile-target="listings">Open listings</a>
+          <a class="button secondary" href="#add-form" data-mobile-target="add">Add a toilet</a>
         </div>
       </div>
     </header>
@@ -56,7 +56,7 @@
           </article>
         </section>
 
-        <section class="floating-panel">
+        <section id="filters-panel" class="floating-panel mobile-panel" data-mobile-panel="filters">
           <div class="panel-heading">
             <div>
               <p class="section-kicker">Filter listings</p>
@@ -103,7 +103,7 @@
       </section>
 
       <section class="overlay-column overlay-right">
-        <section id="toilet-list" class="floating-panel listing-panel">
+        <section id="toilet-list" class="floating-panel listing-panel mobile-panel" data-mobile-panel="listings">
           <div class="panel-heading">
             <div>
               <p class="section-kicker">Listings</p>
@@ -115,7 +115,7 @@
           <div id="card-grid" class="card-grid"></div>
         </section>
 
-        <section id="add-form" class="floating-panel add-panel">
+        <section id="add-form" class="floating-panel add-panel mobile-panel" data-mobile-panel="add">
           <div class="panel-heading">
             <div>
               <p class="section-kicker">Contribute</p>
@@ -190,6 +190,15 @@
         </section>
       </section>
     </main>
+
+    <div class="mobile-sheet-nav" aria-label="Mobile panel navigation">
+      <div class="mobile-sheet-handle" aria-hidden="true"></div>
+      <nav class="mobile-tab-nav">
+        <button type="button" class="mobile-tab-button is-active" data-mobile-tab-button="listings">Listings</button>
+        <button type="button" class="mobile-tab-button" data-mobile-tab-button="filters">Filters</button>
+        <button type="button" class="mobile-tab-button" data-mobile-tab-button="add">Add</button>
+      </nav>
+    </div>
   </div>
 
   <template id="toilet-card-template">

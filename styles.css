@@ -53,6 +53,10 @@ body {
   pointer-events: none;
 }
 
+.mobile-sheet-nav {
+  display: none;
+}
+
 .floating-panel,
 .stat-card,
 .toilet-card {
@@ -105,6 +109,10 @@ body {
 .overlay-left,
 .overlay-right {
   overflow: visible;
+}
+
+.mobile-panel {
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
 .eyebrow,
@@ -431,30 +439,138 @@ h2 {
 }
 
 @media (max-width: 860px) {
+  body {
+    overflow: hidden;
+  }
+
+  .app-overlay {
+    min-height: 100vh;
+    padding: 0;
+    gap: 0;
+  }
+
   .hero-panel {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    z-index: 30;
     grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+
+  .hero-copy .eyebrow {
+    margin-bottom: 6px;
+  }
+
+  .hero-side {
+    gap: 8px;
+    padding-top: 0;
+  }
+
+  .hero-card-label,
+  .hero-text,
+  .hero-actions {
+    display: none;
+  }
+
+  h1 {
+    margin-bottom: 0;
+    font-size: 2.15rem;
+    line-height: 1.02;
+  }
+
+  .hero-summary {
+    font-size: 0.95rem;
   }
 
   .stats-panel {
-    grid-template-columns: 1fr;
+    display: none;
   }
 
   .panel-heading {
     align-items: start;
     flex-direction: column;
   }
-}
 
-@media (max-width: 640px) {
-  .app-overlay {
-    padding: 14px;
-    gap: 14px;
+  .overlay-columns,
+  .overlay-left,
+  .overlay-right {
+    display: contents;
   }
 
-  .floating-panel,
-  .stat-card {
-    padding: 18px;
-    border-radius: 20px;
+  .mobile-panel {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 88px;
+    z-index: 25;
+    max-height: min(34vh, 320px);
+    overflow: auto;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(18px);
+  }
+
+  .mobile-panel.is-active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .mobile-sheet-nav {
+    display: block;
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    z-index: 32;
+    pointer-events: auto;
+  }
+
+  .mobile-sheet-handle {
+    width: 54px;
+    height: 5px;
+    margin: 0 auto 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: 0 8px 20px rgba(19, 34, 56, 0.12);
+  }
+
+  .mobile-tab-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile-tab-button {
+    min-height: 44px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.75);
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .mobile-tab-button.is-active {
+    background: var(--primary);
+    border-color: transparent;
+    color: #fff;
+  }
+
+  .leaflet-top.leaflet-right .leaflet-control-zoom {
+    margin-top: 86px;
+    margin-right: 12px;
   }
 
   .field {
@@ -463,6 +579,14 @@ h2 {
 
   .form-actions {
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .floating-panel,
+  .stat-card {
+    padding: 18px;
+    border-radius: 20px;
   }
 
   h1 {

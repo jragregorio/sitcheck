@@ -56,6 +56,9 @@ const state = {
     bidet: "any",
     payment: "any",
     cleanliness: 0
+  },
+  ui: {
+    mobileTab: "listings"
   }
 };
 
@@ -72,17 +75,39 @@ const elements = {
   cardGrid: document.querySelector("#card-grid"),
   form: document.querySelector("#listing-form"),
   resetButton: document.querySelector("#reset-demo"),
-  cardTemplate: document.querySelector("#toilet-card-template")
+  cardTemplate: document.querySelector("#toilet-card-template"),
+  mobileTabButtons: document.querySelectorAll("[data-mobile-tab-button]"),
+  mobilePanels: document.querySelectorAll("[data-mobile-panel]"),
+  mobileTargetLinks: document.querySelectorAll("[data-mobile-target]")
 };
 
 let map;
 let markerLayer;
+let zoomControl;
+let zoomControlPosition;
 
 bindEvents();
 initMap();
 render();
 
 function bindEvents() {
+  elements.mobileTabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setMobileTab(button.dataset.mobileTabButton);
+    });
+  });
+
+  elements.mobileTargetLinks.forEach((link) => {
+    link.addEventListener("click", (event) => {
+      const targetTab = link.dataset.mobileTarget;
+
+      if (targetTab && isMobileViewport()) {
+        event.preventDefault();
+        setMobileTab(targetTab);
+      }
+    });
+  });
+
   elements.searchInput.addEventListener("input", (event) => {
     state.filters.search = event.target.value.trim().toLowerCase();
     render();
@@ -143,8 +168,9 @@ function initMap() {
     zoomControl: false
   }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
-  L.control.zoom({
-    position: "bottomleft"
+  zoomControlPosition = getZoomControlPosition();
+  zoomControl = L.control.zoom({
+    position: zoomControlPosition
   }).addTo(map);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -154,11 +180,16 @@ function initMap() {
 
   markerLayer = L.layerGroup().addTo(map);
   window.setTimeout(() => map.invalidateSize(), 0);
-  window.addEventListener("resize", () => map.invalidateSize());
+  window.addEventListener("resize", () => {
+    map.invalidateSize();
+    syncZoomControlPosition();
+    updateMobileUI();
+  });
 }
 
 function render() {
   const visibleListings = getFilteredListings();
+  updateMobileUI();
   renderStats();
   renderMap(visibleListings);
   renderCards(visibleListings);
@@ -321,6 +352,20 @@ function getFallbackCoordinates(index) {
 }
 
 function getMapFitPadding() {
+  if (window.innerWidth <= 860) {
+    if (!state.ui.mobileTab) {
+      return {
+        topLeft: [24, 120],
+        bottomRight: [24, 92]
+      };
+    }
+
+    return {
+      topLeft: [24, 132],
+      bottomRight: [24, 250]
+    };
+  }
+
   if (window.innerWidth <= 1100) {
     return {
       topLeft: [32, 140],
@@ -332,6 +377,51 @@ function getMapFitPadding() {
     topLeft: [360, 170],
     bottomRight: [440, 32]
   };
+}
+
+function setMobileTab(tab) {
+  if (isMobileViewport() && state.ui.mobileTab === tab) {
+    state.ui.mobileTab = null;
+  } else {
+    state.ui.mobileTab = tab;
+  }
+
+  render();
+}
+
+function updateMobileUI() {
+  elements.mobileTabButtons.forEach((button) => {
+    const isActive = button.dataset.mobileTabButton === state.ui.mobileTab;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+
+  elements.mobilePanels.forEach((panel) => {
+    const isActive = !isMobileViewport() || panel.dataset.mobilePanel === state.ui.mobileTab;
+    panel.classList.toggle("is-active", isActive);
+  });
+}
+
+function isMobileViewport() {
+  return window.innerWidth <= 860;
+}
+
+function getZoomControlPosition() {
+  return isMobileViewport() ? "topright" : "bottomleft";
+}
+
+function syncZoomControlPosition() {
+  const nextPosition = getZoomControlPosition();
+
+  if (!map || !zoomControl || nextPosition === zoomControlPosition) {
+    return;
+  }
+
+  map.removeControl(zoomControl);
+  zoomControl = L.control.zoom({
+    position: nextPosition
+  }).addTo(map);
+  zoomControlPosition = nextPosition;
 }
 
 function clampCleanliness(value) {
