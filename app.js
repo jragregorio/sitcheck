@@ -139,7 +139,7 @@ function initMap() {
   }
 
   map = L.map("map", {
-    scrollWheelZoom: false
+    scrollWheelZoom: true
   }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -149,6 +149,7 @@ function initMap() {
 
   markerLayer = L.layerGroup().addTo(map);
   window.setTimeout(() => map.invalidateSize(), 0);
+  window.addEventListener("resize", () => map.invalidateSize());
 }
 
 function render() {
@@ -192,7 +193,11 @@ function renderMap(listings) {
   });
 
   if (bounds.length) {
-    map.fitBounds(bounds, { padding: [32, 32], maxZoom: 16 });
+    map.fitBounds(bounds, {
+      paddingTopLeft: getMapFitPadding().topLeft,
+      paddingBottomRight: getMapFitPadding().bottomRight,
+      maxZoom: 16
+    });
   } else {
     map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
   }
@@ -307,6 +312,20 @@ function getFallbackCoordinates(index) {
   return {
     latitude: DEFAULT_CENTER[0] + offset,
     longitude: DEFAULT_CENTER[1] + offset
+  };
+}
+
+function getMapFitPadding() {
+  if (window.innerWidth <= 1100) {
+    return {
+      topLeft: [32, 140],
+      bottomRight: [32, 32]
+    };
+  }
+
+  return {
+    topLeft: [360, 170],
+    bottomRight: [440, 32]
   };
 }
 

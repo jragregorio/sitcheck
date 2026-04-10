@@ -16,190 +16,178 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="page-shell">
-    <header class="hero">
+  <div id="map" class="map-canvas" aria-label="Map of toilet locations"></div>
+
+  <div class="app-overlay">
+    <header class="floating-panel hero-panel">
       <div class="hero-copy">
         <p class="eyebrow">SitCheck</p>
         <h1>Find the right toilet before you need it.</h1>
         <p class="hero-text">
-          A simple restroom finder focused on the details that matter most:
-          bidet availability, cleanliness, payment, and location notes.
+          Open the map, spot nearby restrooms, and check bidet availability,
+          cleanliness, and payment details at a glance.
         </p>
-        <div class="hero-actions">
-          <a class="button primary" href="#map-section">Open map</a>
-          <a class="button secondary" href="#toilet-list">Browse toilets</a>
-          <a class="button secondary" href="#add-form">Add a listing</a>
-        </div>
       </div>
-      <div class="hero-card">
-        <p class="hero-card-label">Demo status</p>
-        <h2>Static prototype</h2>
-        <ul class="hero-points">
-          <li>Mobile-friendly layout</li>
-          <li>Sample restroom data</li>
-          <li>Interactive filters</li>
-          <li>Form saves locally in your browser</li>
-        </ul>
+
+      <div class="hero-side">
+        <p class="hero-card-label">Live map summary</p>
+        <p id="map-summary" class="hero-summary">Loading map...</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#toilet-list">Open listings</a>
+          <a class="button secondary" href="#add-form">Add a toilet</a>
+        </div>
       </div>
     </header>
 
-    <main>
-      <section id="map-section" class="panel">
-        <div class="panel-heading">
-          <div>
-            <p class="section-kicker">Map view</p>
-            <h2>Find toilets near the area you need</h2>
-          </div>
-          <p id="map-summary" class="section-note">Loading map...</p>
-        </div>
+    <main class="overlay-columns">
+      <section class="overlay-column overlay-left">
+        <section class="floating-panel stats-panel">
+          <article class="stat-card">
+            <span id="total-count" class="stat-value">0</span>
+            <span class="stat-label">Listed toilets</span>
+          </article>
+          <article class="stat-card">
+            <span id="bidet-count" class="stat-value">0</span>
+            <span class="stat-label">With bidet</span>
+          </article>
+          <article class="stat-card">
+            <span id="free-count" class="stat-value">0</span>
+            <span class="stat-label">Free access</span>
+          </article>
+        </section>
 
-        <div id="map" class="map-panel" aria-label="Map of toilet locations"></div>
+        <section class="floating-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Filter listings</p>
+              <h2>Quick restroom search</h2>
+            </div>
+            <p class="section-note">Everything stays visible while the map remains the main canvas.</p>
+          </div>
+
+          <div class="filters">
+            <label class="field">
+              <span>Search</span>
+              <input id="search-input" type="text" placeholder="Mall, park, station...">
+            </label>
+
+            <label class="field">
+              <span>Bidet</span>
+              <select id="bidet-filter">
+                <option value="any">Any</option>
+                <option value="yes">Has bidet</option>
+                <option value="no">No bidet</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Payment</span>
+              <select id="payment-filter">
+                <option value="any">Any</option>
+                <option value="free">Free only</option>
+                <option value="paid">Paid only</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Min cleanliness</span>
+              <select id="cleanliness-filter">
+                <option value="0">Any</option>
+                <option value="3">3+</option>
+                <option value="4">4+</option>
+                <option value="5">5 only</option>
+              </select>
+            </label>
+          </div>
+        </section>
       </section>
 
-      <section class="stats">
-        <article class="stat-card">
-          <span id="total-count" class="stat-value">0</span>
-          <span class="stat-label">Listed toilets</span>
-        </article>
-        <article class="stat-card">
-          <span id="bidet-count" class="stat-value">0</span>
-          <span class="stat-label">With bidet</span>
-        </article>
-        <article class="stat-card">
-          <span id="free-count" class="stat-value">0</span>
-          <span class="stat-label">Free access</span>
-        </article>
-      </section>
-
-      <section class="panel">
-        <div class="panel-heading">
-          <div>
-            <p class="section-kicker">Filter listings</p>
-            <h2>Quick restroom search</h2>
+      <section class="overlay-column overlay-right">
+        <section id="toilet-list" class="floating-panel listing-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Listings</p>
+              <h2>Available toilets</h2>
+            </div>
+            <p id="results-summary" class="section-note">Loading demo listings...</p>
           </div>
-          <p class="section-note">Good for early demos while you validate the concept.</p>
-        </div>
 
-        <div class="filters">
-          <label class="field">
-            <span>Search</span>
-            <input id="search-input" type="text" placeholder="Mall, park, station...">
-          </label>
+          <div id="card-grid" class="card-grid"></div>
+        </section>
 
-          <label class="field">
-            <span>Bidet</span>
-            <select id="bidet-filter">
-              <option value="any">Any</option>
-              <option value="yes">Has bidet</option>
-              <option value="no">No bidet</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span>Payment</span>
-            <select id="payment-filter">
-              <option value="any">Any</option>
-              <option value="free">Free only</option>
-              <option value="paid">Paid only</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span>Min cleanliness</span>
-            <select id="cleanliness-filter">
-              <option value="0">Any</option>
-              <option value="3">3+</option>
-              <option value="4">4+</option>
-              <option value="5">5 only</option>
-            </select>
-          </label>
-        </div>
-      </section>
-
-      <section id="toilet-list" class="panel">
-        <div class="panel-heading">
-          <div>
-            <p class="section-kicker">Listings</p>
-            <h2>Available toilets</h2>
+        <section id="add-form" class="floating-panel add-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Contribute</p>
+              <h2>Add a toilet</h2>
+            </div>
+            <p class="section-note">Entries added here stay in local browser storage for demo use.</p>
           </div>
-          <p id="results-summary" class="section-note">Loading demo listings...</p>
-        </div>
 
-        <div id="card-grid" class="card-grid"></div>
-      </section>
+          <form id="listing-form" class="listing-form">
+            <label class="field">
+              <span>Name</span>
+              <input name="name" type="text" placeholder="Central Mall 2F Restroom" required>
+            </label>
 
-      <section id="add-form" class="panel">
-        <div class="panel-heading">
-          <div>
-            <p class="section-kicker">Contribute</p>
-            <h2>Add a toilet</h2>
-          </div>
-          <p class="section-note">Entries added here stay in local browser storage for demo use.</p>
-        </div>
+            <label class="field">
+              <span>Location</span>
+              <input name="location" type="text" placeholder="Makati, 2nd floor near food court" required>
+            </label>
 
-        <form id="listing-form" class="listing-form">
-          <label class="field">
-            <span>Name</span>
-            <input name="name" type="text" placeholder="Central Mall 2F Restroom" required>
-          </label>
+            <label class="field">
+              <span>Latitude</span>
+              <input name="latitude" type="number" step="any" placeholder="14.5547" required>
+            </label>
 
-          <label class="field">
-            <span>Location</span>
-            <input name="location" type="text" placeholder="Makati, 2nd floor near food court" required>
-          </label>
+            <label class="field">
+              <span>Longitude</span>
+              <input name="longitude" type="number" step="any" placeholder="121.0244" required>
+            </label>
 
-          <label class="field">
-            <span>Latitude</span>
-            <input name="latitude" type="number" step="any" placeholder="14.5547" required>
-          </label>
+            <label class="field">
+              <span>Has bidet?</span>
+              <select name="hasBidet">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </label>
 
-          <label class="field">
-            <span>Longitude</span>
-            <input name="longitude" type="number" step="any" placeholder="121.0244" required>
-          </label>
+            <label class="field">
+              <span>Cleanliness</span>
+              <select name="cleanliness">
+                <option value="5">5 - Very clean</option>
+                <option value="4">4 - Clean</option>
+                <option value="3">3 - Acceptable</option>
+                <option value="2">2 - Needs work</option>
+                <option value="1">1 - Poor</option>
+              </select>
+            </label>
 
-          <label class="field">
-            <span>Has bidet?</span>
-            <select name="hasBidet">
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
-          </label>
+            <label class="field">
+              <span>Payment required?</span>
+              <select name="paymentRequired">
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </select>
+            </label>
 
-          <label class="field">
-            <span>Cleanliness</span>
-            <select name="cleanliness">
-              <option value="5">5 - Very clean</option>
-              <option value="4">4 - Clean</option>
-              <option value="3">3 - Acceptable</option>
-              <option value="2">2 - Needs work</option>
-              <option value="1">1 - Poor</option>
-            </select>
-          </label>
+            <label class="field">
+              <span>Fee amount</span>
+              <input name="fee" type="number" min="0" step="1" placeholder="10">
+            </label>
 
-          <label class="field">
-            <span>Payment required?</span>
-            <select name="paymentRequired">
-              <option value="false">No</option>
-              <option value="true">Yes</option>
-            </select>
-          </label>
+            <label class="field full-width">
+              <span>Notes</span>
+              <textarea name="notes" rows="3" placeholder="Near the escalator, bring tissue, often busy at lunch."></textarea>
+            </label>
 
-          <label class="field">
-            <span>Fee amount</span>
-            <input name="fee" type="number" min="0" step="1" placeholder="10">
-          </label>
-
-          <label class="field full-width">
-            <span>Notes</span>
-            <textarea name="notes" rows="3" placeholder="Near the escalator, bring tissue, often busy at lunch."></textarea>
-          </label>
-
-          <div class="form-actions">
-            <button type="submit" class="button primary">Save listing</button>
-            <button id="reset-demo" type="button" class="button secondary">Reset demo data</button>
-          </div>
-        </form>
+            <div class="form-actions">
+              <button type="submit" class="button primary">Save listing</button>
+              <button id="reset-demo" type="button" class="button secondary">Reset demo data</button>
+            </div>
+          </form>
+        </section>
       </section>
     </main>
   </div>
