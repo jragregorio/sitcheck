@@ -1,0 +1,4 @@
+window.SITCHECK_CONFIG = {
+  supabaseUrl: "https://wfizfawwuhuocjsdrfag.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaXpmYXd3dWh1b2Nqc2RyZmFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5Njk0NjYsImV4cCI6MjA5MTU0NTQ2Nn0.mmhmRzMyFyQSHV-ObLve9B1iIDoZaM3Hb2MXw26Nvvs"
+};

@@ -1,6 +1,10 @@
 const STORAGE_KEY = "sitcheck-demo-listings";
 const DEFAULT_CENTER = [14.5547, 121.0244];
 const DEFAULT_ZOOM = 12;
+const SUPABASE_TABLES = {
+  toilets: "toilets",
+  submissions: "toilet_submissions"
+};
 
 const defaultListings = [
   {
@@ -53,8 +57,15 @@ const defaultListings = [
   }
 ];
 
+const supabaseConfig = window.SITCHECK_CONFIG || {};
+const supabaseUrl = typeof supabaseConfig.supabaseUrl === "string" ? supabaseConfig.supabaseUrl.trim() : "";
+const supabaseAnonKey = typeof supabaseConfig.supabaseAnonKey === "string" ? supabaseConfig.supabaseAnonKey.trim() : "";
+const supabaseClient = supabaseUrl && supabaseAnonKey && window.supabase?.createClient
+  ? window.supabase.createClient(supabaseUrl, supabaseAnonKey)
+  : null;
+
 const state = {
-  listings: loadListings(),
+  listings: supabaseClient ? [] : loadListings(),
   filters: {
     search: "",
     bidet: "any",
@@ -63,7 +74,10 @@ const state = {
   },
   ui: {
     mobileTab: null,
-    desktopPanel: "listings"
+    desktopPanel: "listings",
+    dataMode: supabaseClient ? "supabase" : "local",
+    isLoadingListings: Boolean(supabaseClient),
+    remoteError: ""
   },
   draft: {
     nameTouched: false,
@@ -82,6 +96,7 @@ const elements = {
   freeCount: document.querySelector("#free-count"),
   resultsSummary: document.querySelector("#results-summary"),
   mapSummary: document.querySelector("#map-summary"),
+  addFormNote: document.querySelector("#add-form-note"),
   cardGrid: document.querySelector("#card-grid"),
   locateButton: null,
   form: document.querySelector("#listing-form"),
@@ -90,6 +105,7 @@ const elements = {
   latitudeInput: document.querySelector('input[name="latitude"]'),
   longitudeInput: document.querySelector('input[name="longitude"]'),
   resetButton: document.querySelector("#reset-demo"),
+  submitButton: document.querySelector("#submit-listing"),
   pinStatus: document.querySelector("#pin-status"),
   focusPinButton: document.querySelector("#focus-pin"),
   cardTemplate: document.querySelector("#toilet-card-template"),
@@ -113,7 +129,12 @@ let isLocatingUser = false;
 
 bindEvents();
 initMap();
+syncDataModeUI();
 render();
+
+if (supabaseClient) {
+  void initializeRemoteListings();
+}
 
 function bindEvents() {
   elements.nameInput.addEventListener("input", () => {
@@ -184,7 +205,7 @@ function bindEvents() {
     render();
   });
 
-  elements.form.addEventListener("submit", (event) => {
+  elements.form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(elements.form);
 
@@ -201,6 +222,24 @@ function bindEvents() {
       notes: formData.get("notes")
     }, state.listings.length);
 
+    if (isUsingSupabase()) {
+      setSubmitButtonState(true);
+
+      try {
+        await submitSupabaseListing(newListing);
+        elements.form.reset();
+        resetContributionDraft();
+        elements.pinStatus.textContent = "Submission sent for review. Thanks for contributing.";
+        elements.mapSummary.textContent = "Contribution submitted for review.";
+      } catch (error) {
+        elements.pinStatus.textContent = error.message || "Could not submit contribution right now.";
+      } finally {
+        setSubmitButtonState(false);
+      }
+
+      return;
+    }
+
     state.listings = [newListing, ...state.listings];
     persistListings();
     elements.form.reset();
@@ -209,6 +248,10 @@ function bindEvents() {
   });
 
   elements.resetButton.addEventListener("click", () => {
+    if (isUsingSupabase()) {
+      return;
+    }
+
     state.listings = defaultListings.map((listing, index) => normalizeListing(listing, index));
     persistListings();
     resetContributionDraft();
@@ -269,6 +312,18 @@ function renderMap(listings) {
   }
 
   markerLayer.clearLayers();
+
+  if (state.ui.isLoadingListings) {
+    map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    elements.mapSummary.textContent = "Loading approved listings...";
+    return;
+  }
+
+  if (state.ui.remoteError) {
+    map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    elements.mapSummary.textContent = state.ui.remoteError;
+    return;
+  }
 
   if (!listings.length) {
     map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
@@ -380,6 +435,34 @@ function setLocateButtonState(isLocating) {
   elements.locateButton.title = isLocating ? "Locating..." : "Use my location";
 }
 
+function setSubmitButtonState(isSubmitting) {
+  if (!elements.submitButton) {
+    return;
+  }
+
+  elements.submitButton.disabled = isSubmitting;
+
+  if (isSubmitting) {
+    elements.submitButton.textContent = "Submitting...";
+    return;
+  }
+
+  elements.submitButton.textContent = isUsingSupabase() ? "Submit for review" : "Save listing";
+}
+
+function syncDataModeUI() {
+  if (isUsingSupabase()) {
+    elements.resetButton.hidden = true;
+    elements.addFormNote.textContent = "Entries submitted here are sent for review before appearing on the public map.";
+    setSubmitButtonState(false);
+    return;
+  }
+
+  elements.resetButton.hidden = false;
+  elements.addFormNote.textContent = "Entries added here stay in local browser storage for demo use.";
+  setSubmitButtonState(false);
+}
+
 function getLocationErrorMessage(error) {
   switch (error.code) {
     case error.PERMISSION_DENIED:
@@ -395,6 +478,22 @@ function getLocationErrorMessage(error) {
 
 function renderCards(listings) {
   elements.cardGrid.innerHTML = "";
+
+  if (state.ui.isLoadingListings) {
+    const loadingState = document.createElement("div");
+    loadingState.className = "empty-state";
+    loadingState.textContent = "Loading approved listings...";
+    elements.cardGrid.appendChild(loadingState);
+    return;
+  }
+
+  if (state.ui.remoteError) {
+    const errorState = document.createElement("div");
+    errorState.className = "empty-state";
+    errorState.textContent = state.ui.remoteError;
+    elements.cardGrid.appendChild(errorState);
+    return;
+  }
 
   if (!listings.length) {
     const emptyState = document.createElement("div");
@@ -424,8 +523,76 @@ function renderCards(listings) {
 }
 
 function renderSummary(listings) {
+  if (state.ui.isLoadingListings) {
+    elements.resultsSummary.textContent = "Loading approved listings...";
+    return;
+  }
+
+  if (state.ui.remoteError) {
+    elements.resultsSummary.textContent = "Could not load approved listings.";
+    return;
+  }
+
   const suffix = listings.length === 1 ? "listing" : "listings";
   elements.resultsSummary.textContent = `Showing ${listings.length} ${suffix} from ${state.listings.length} total.`;
+}
+
+async function initializeRemoteListings() {
+  try {
+    const listings = await fetchSupabaseListings();
+    state.listings = listings;
+    state.ui.remoteError = "";
+  } catch (error) {
+    state.listings = [];
+    state.ui.remoteError = error.message || "Could not load approved listings from Supabase.";
+  } finally {
+    state.ui.isLoadingListings = false;
+    render();
+  }
+}
+
+async function fetchSupabaseListings() {
+  const { data, error } = await supabaseClient
+    .from(SUPABASE_TABLES.toilets)
+    .select("name, location_text, latitude, longitude, has_bidet, cleanliness, pressure_level, payment_required, fee, notes");
+
+  if (error) {
+    throw new Error("Could not load approved listings from Supabase.");
+  }
+
+  return (data || []).map((listing, index) => normalizeListing({
+    name: listing.name,
+    location: listing.location_text,
+    latitude: listing.latitude,
+    longitude: listing.longitude,
+    hasBidet: listing.has_bidet,
+    cleanliness: listing.cleanliness,
+    pressureLevel: listing.pressure_level,
+    paymentRequired: listing.payment_required,
+    fee: listing.fee,
+    notes: listing.notes
+  }, index));
+}
+
+async function submitSupabaseListing(listing) {
+  const { error } = await supabaseClient
+    .from(SUPABASE_TABLES.submissions)
+    .insert({
+      name: listing.name,
+      location_text: listing.location,
+      latitude: listing.latitude,
+      longitude: listing.longitude,
+      has_bidet: listing.hasBidet,
+      cleanliness: listing.cleanliness,
+      pressure_level: listing.pressureLevel,
+      payment_required: listing.paymentRequired,
+      fee: listing.fee,
+      notes: listing.notes
+    });
+
+  if (error) {
+    throw new Error("Could not submit contribution. Check your Supabase table columns and RLS policies.");
+  }
 }
 
 function getFilteredListings() {
@@ -601,6 +768,10 @@ function updateDesktopUI() {
 
 function isMobileViewport() {
   return window.innerWidth <= 860;
+}
+
+function isUsingSupabase() {
+  return state.ui.dataMode === "supabase";
 }
 
 function getZoomControlPosition() {

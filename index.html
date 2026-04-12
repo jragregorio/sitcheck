@@ -121,7 +121,7 @@
               <p class="section-kicker">Contribute</p>
               <h2>Add a toilet</h2>
             </div>
-            <p class="section-note">Entries added here stay in local browser storage for demo use.</p>
+            <p id="add-form-note" class="section-note">Entries submitted here can be reviewed before going live.</p>
           </div>
 
           <form id="listing-form" class="listing-form">
@@ -262,7 +262,7 @@
             </label>
 
             <div class="form-actions">
-              <button type="submit" class="button primary">Save listing</button>
+              <button id="submit-listing" type="submit" class="button primary">Save listing</button>
               <button id="reset-demo" type="button" class="button secondary">Reset demo data</button>
             </div>
           </form>
@@ -298,6 +298,11 @@
     </article>
   </template>
 
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+    crossorigin="anonymous"
+  ></script>
+  <script src="config.js"></script>
   <script
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
