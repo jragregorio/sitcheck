@@ -403,6 +403,7 @@ h2 {
 
 .map-popup p {
   margin-bottom: 10px;
+  font-size: 0.65rem;
   color: var(--muted);
   line-height: 1.5;
 }
