@@ -710,6 +710,7 @@ function setMobileTab(tab) {
   render();
 
   if (state.ui.mobileTab === "add") {
+    resetContributionDraft();
     focusContributionPin();
   }
 }
@@ -723,6 +724,7 @@ function setDesktopPanel(panel) {
   updateDesktopUI();
 
   if (panel === "add") {
+    resetContributionDraft();
     focusContributionPin();
   }
 }
