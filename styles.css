@@ -614,6 +614,19 @@ h2 {
 .toilet-card {
   padding: 18px;
   background: var(--panel-strong);
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.toilet-card:hover {
+  border-color: rgba(36, 87, 245, 0.18);
+  box-shadow: 0 24px 46px rgba(19, 34, 56, 0.16);
+  transform: translateY(-1px);
+}
+
+.toilet-card:focus-visible {
+  outline: 2px solid rgba(36, 87, 245, 0.28);
+  outline-offset: 3px;
 }
 
 .card-header {

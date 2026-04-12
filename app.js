@@ -124,6 +124,7 @@ let markerLayer;
 let userLocationLayer;
 let mapControls;
 let mapControlsPosition;
+let listingMarkerMap = new Map();
 let contributionMarker;
 let contributionMarkerVisible = false;
 let isLocatingUser = false;
@@ -317,6 +318,7 @@ function renderMap(listings) {
   }
 
   markerLayer.clearLayers();
+  listingMarkerMap = new Map();
 
   if (state.ui.isLoadingListings) {
     map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
@@ -346,6 +348,7 @@ function renderMap(listings) {
     const marker = L.marker([listing.latitude, listing.longitude]);
     marker.bindPopup(buildPopupMarkup(listing));
     marker.addTo(markerLayer);
+    listingMarkerMap.set(listing, marker);
     bounds.push([listing.latitude, listing.longitude]);
   });
 
@@ -533,6 +536,10 @@ function renderCards(listings) {
 
   listings.forEach((listing) => {
     const fragment = elements.cardTemplate.content.cloneNode(true);
+    const card = fragment.querySelector(".toilet-card");
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `Focus ${listing.name} on the map`);
     fragment.querySelector(".card-title").textContent = listing.name;
     fragment.querySelector(".card-location").textContent = listing.location;
     fragment.querySelector(".cleanliness-badge").textContent = `Cleanliness ${listing.cleanliness}/5`;
@@ -546,8 +553,47 @@ function renderCards(listings) {
     tagRow.appendChild(buildTag(listing.paymentRequired ? "Paid entry" : "Free entry", listing.paymentRequired));
     fragment.querySelector(".pressure-row").appendChild(buildPressureBadge(listing.pressureLevel));
 
+    card.addEventListener("click", () => {
+      focusListingOnMap(listing);
+    });
+
+    card.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+
+      event.preventDefault();
+      focusListingOnMap(listing);
+    });
+
     elements.cardGrid.appendChild(fragment);
   });
+}
+
+function focusListingOnMap(listing) {
+  if (!map) {
+    return;
+  }
+
+  const marker = listingMarkerMap.get(listing);
+
+  if (!marker) {
+    return;
+  }
+
+  map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 16), {
+    animate: true,
+    duration: 0.6
+  });
+
+  window.setTimeout(() => {
+    marker.openPopup();
+  }, 220);
+
+  if (isMobileViewport()) {
+    state.ui.mobileTab = null;
+    updateMobileUI();
+  }
 }
 
 function renderSummary(listings) {
