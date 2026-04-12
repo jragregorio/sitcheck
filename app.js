@@ -98,6 +98,7 @@ const elements = {
   mapSummary: document.querySelector("#map-summary"),
   addFormNote: document.querySelector("#add-form-note"),
   cardGrid: document.querySelector("#card-grid"),
+  toast: document.querySelector("#toast"),
   locateButton: null,
   form: document.querySelector("#listing-form"),
   nameInput: document.querySelector('input[name="name"]'),
@@ -126,6 +127,7 @@ let mapControlsPosition;
 let contributionMarker;
 let contributionMarkerVisible = false;
 let isLocatingUser = false;
+let toastTimeoutId = 0;
 
 bindEvents();
 initMap();
@@ -231,8 +233,10 @@ function bindEvents() {
         resetContributionDraft();
         elements.pinStatus.textContent = "Submission sent for review. Thanks for contributing.";
         elements.mapSummary.textContent = "Contribution submitted for review.";
+        showToast("Submission sent for review. Thanks for contributing.", "success");
       } catch (error) {
         elements.pinStatus.textContent = error.message || "Could not submit contribution right now.";
+        showToast(error.message || "Could not submit contribution right now.", "error");
       } finally {
         setSubmitButtonState(false);
       }
@@ -245,6 +249,7 @@ function bindEvents() {
     elements.form.reset();
     resetContributionDraft();
     render();
+    showToast("Listing saved to your local demo data.", "success");
   });
 
   elements.resetButton.addEventListener("click", () => {
@@ -448,6 +453,29 @@ function setSubmitButtonState(isSubmitting) {
   }
 
   elements.submitButton.textContent = isUsingSupabase() ? "Submit for review" : "Save listing";
+}
+
+function showToast(message, variant = "success") {
+  if (!elements.toast) {
+    return;
+  }
+
+  window.clearTimeout(toastTimeoutId);
+  elements.toast.textContent = message;
+  elements.toast.classList.remove("is-success", "is-error");
+  elements.toast.classList.add("is-visible", variant === "error" ? "is-error" : "is-success");
+
+  toastTimeoutId = window.setTimeout(() => {
+    hideToast();
+  }, 3600);
+}
+
+function hideToast() {
+  if (!elements.toast) {
+    return;
+  }
+
+  elements.toast.classList.remove("is-visible", "is-success", "is-error");
 }
 
 function syncDataModeUI() {

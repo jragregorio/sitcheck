@@ -61,6 +61,41 @@ body {
   display: none !important;
 }
 
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 45;
+  min-width: min(320px, calc(100vw - 32px));
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 14px 18px;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  background: rgba(19, 34, 56, 0.92);
+  color: #fff;
+  box-shadow: 0 18px 40px rgba(19, 34, 56, 0.22);
+  backdrop-filter: blur(18px);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 14px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.toast.is-success {
+  background: rgba(8, 115, 100, 0.94);
+  border-color: rgba(182, 245, 231, 0.28);
+}
+
+.toast.is-error {
+  background: rgba(154, 29, 53, 0.94);
+  border-color: rgba(255, 201, 214, 0.24);
+}
+
 .floating-panel,
 .stat-card,
 .toilet-card {
@@ -852,6 +887,12 @@ h2 {
     bottom: 12px;
     z-index: 32;
     pointer-events: auto;
+  }
+
+  .toast {
+    bottom: 86px;
+    min-width: min(320px, calc(100vw - 24px));
+    max-width: min(420px, calc(100vw - 24px));
   }
 
   .mobile-sheet-handle {
