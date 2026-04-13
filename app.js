@@ -91,6 +91,7 @@ const elements = {
   bidetFilter: document.querySelector("#bidet-filter"),
   paymentFilter: document.querySelector("#payment-filter"),
   cleanlinessFilter: document.querySelector("#cleanliness-filter"),
+  clearFiltersButton: document.querySelector("#clear-filters"),
   totalCount: document.querySelector("#total-count"),
   bidetCount: document.querySelector("#bidet-count"),
   freeCount: document.querySelector("#free-count"),
@@ -208,6 +209,11 @@ function bindEvents() {
     render();
   });
 
+  elements.clearFiltersButton.addEventListener("click", () => {
+    resetFilters();
+    render();
+  });
+
   elements.form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(elements.form);
@@ -298,6 +304,7 @@ function initMap() {
 
 function render() {
   const visibleListings = getFilteredListings();
+  syncFilterUI();
   updateMobileUI();
   updateDesktopUI();
   renderStats();
@@ -346,7 +353,9 @@ function renderMap(listings) {
     }
 
     const marker = L.marker([listing.latitude, listing.longitude]);
-    marker.bindPopup(buildPopupMarkup(listing));
+    marker.bindPopup(buildPopupMarkup(listing), {
+      autoPan: false
+    });
     marker.addTo(markerLayer);
     listingMarkerMap.set(listing, marker);
     bounds.push([listing.latitude, listing.longitude]);
@@ -575,25 +584,95 @@ function focusListingOnMap(listing) {
     return;
   }
 
+  if (isMobileViewport()) {
+    state.ui.mobileTab = null;
+    updateMobileUI();
+  }
+
   const marker = listingMarkerMap.get(listing);
 
   if (!marker) {
     return;
   }
 
+  const targetZoom = Math.max(map.getZoom(), 16);
+  const currentCenter = map.getCenter();
+  const markerLatLng = marker.getLatLng();
+  const isAlreadyFocused =
+    Math.abs(currentCenter.lat - markerLatLng.lat) < 0.00001 &&
+    Math.abs(currentCenter.lng - markerLatLng.lng) < 0.00001 &&
+    map.getZoom() === targetZoom;
+
+  if (isAlreadyFocused) {
+    openAndOffsetListingPopup(marker);
+    return;
+  }
+
+  map.once("moveend", () => {
+    openAndOffsetListingPopup(marker);
+  });
+
   map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 16), {
     animate: true,
     duration: 0.6
   });
+}
 
+function openAndOffsetListingPopup(marker) {
+  marker.openPopup();
   window.setTimeout(() => {
-    marker.openPopup();
-  }, 220);
+    adjustListingPopupOffset(marker);
+  }, 40);
+}
 
-  if (isMobileViewport()) {
-    state.ui.mobileTab = null;
-    updateMobileUI();
+function adjustListingPopupOffset(marker) {
+  if (!map) {
+    return;
   }
+
+  const popupElement = marker.getPopup()?.getElement();
+
+  if (!popupElement) {
+    return;
+  }
+
+  const markerPoint = map.latLngToContainerPoint(marker.getLatLng());
+  const popupHeight = popupElement.offsetHeight || 0;
+  const targetPoint = getListingPopupTargetPoint(markerPoint, popupHeight);
+  const offset = [
+    0,
+    markerPoint.y - targetPoint.y
+  ];
+
+  if (Math.abs(offset[1]) < 4) {
+    return;
+  }
+
+  map.panBy(offset, {
+    animate: true,
+    duration: 0.35
+  });
+}
+
+function getListingPopupTargetPoint(markerPoint, popupHeight) {
+  const minVisibleTop = getVisibleMapTopBoundary();
+  const targetY = Math.max(markerPoint.y, minVisibleTop + popupHeight + 52);
+
+  return {
+    x: markerPoint.x,
+    y: targetY
+  };
+}
+
+function getVisibleMapTopBoundary() {
+  const header = document.querySelector(".hero-panel");
+
+  if (!header) {
+    return isMobileViewport() ? 106 : 28;
+  }
+
+  const headerRect = header.getBoundingClientRect();
+  return Math.max(isMobileViewport() ? 118 : 40, headerRect.bottom + 28);
 }
 
 function renderSummary(listings) {
@@ -609,6 +688,30 @@ function renderSummary(listings) {
 
   const suffix = listings.length === 1 ? "listing" : "listings";
   elements.resultsSummary.textContent = `Showing ${listings.length} ${suffix} from ${state.listings.length} total.`;
+}
+
+function syncFilterUI() {
+  elements.searchInput.value = state.filters.search;
+  elements.bidetFilter.value = state.filters.bidet;
+  elements.paymentFilter.value = state.filters.payment;
+  elements.cleanlinessFilter.value = String(state.filters.cleanliness);
+  elements.clearFiltersButton.hidden = !hasActiveFilters();
+}
+
+function hasActiveFilters() {
+  return Boolean(
+    state.filters.search ||
+    state.filters.bidet !== "any" ||
+    state.filters.payment !== "any" ||
+    state.filters.cleanliness !== 0
+  );
+}
+
+function resetFilters() {
+  state.filters.search = "";
+  state.filters.bidet = "any";
+  state.filters.payment = "any";
+  state.filters.cleanliness = 0;
 }
 
 async function initializeRemoteListings() {

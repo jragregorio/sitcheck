@@ -429,6 +429,14 @@ h2 {
   gap: 14px;
 }
 
+.filters-actions {
+  margin-top: 14px;
+}
+
+.filters-actions .button {
+  width: 100%;
+}
+
 .pin-helper {
   display: flex;
   grid-column: 1 / -1;
