@@ -237,6 +237,10 @@ h2 {
   white-space: nowrap;
 }
 
+.form-actions:has(> .button[hidden]) {
+  grid-template-columns: 1fr;
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -435,6 +439,17 @@ h2 {
 
 .filters-actions .button {
   width: 100%;
+}
+
+.button.secondary.filter-reset-button {
+  background: rgba(255, 237, 240, 0.96);
+  border-color: rgba(214, 74, 111, 0.2);
+  color: #a33455;
+}
+
+.button.secondary.filter-reset-button:hover {
+  background: rgba(255, 228, 233, 0.98);
+  border-color: rgba(214, 74, 111, 0.3);
 }
 
 .pin-helper {

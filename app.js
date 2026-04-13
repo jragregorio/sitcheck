@@ -114,6 +114,8 @@ const elements = {
   mobileTabButtons: document.querySelectorAll("[data-mobile-tab-button]"),
   mobilePanels: document.querySelectorAll("[data-mobile-panel]"),
   mobileTargetLinks: document.querySelectorAll("[data-mobile-target]"),
+  overlayLeft: document.querySelector(".overlay-left"),
+  overlayRight: document.querySelector(".overlay-right"),
   desktopPanels: {
     listings: document.querySelector("#toilet-list"),
     add: document.querySelector("#add-form")
@@ -886,6 +888,10 @@ function setMobileTab(tab) {
 
   render();
 
+  if (state.ui.mobileTab) {
+    scrollPanelToTop(state.ui.mobileTab);
+  }
+
   if (state.ui.mobileTab === "add") {
     resetContributionDraft();
     focusContributionPin();
@@ -899,6 +905,7 @@ function setDesktopPanel(panel) {
 
   state.ui.desktopPanel = panel;
   updateDesktopUI();
+  scrollPanelToTop(panel);
 
   if (panel === "add") {
     resetContributionDraft();
@@ -943,6 +950,37 @@ function updateDesktopUI() {
   });
 
   updateContributionMarkerVisibility();
+}
+
+function scrollPanelToTop(panelName) {
+  const mobilePanel = Array.from(elements.mobilePanels).find((panel) => panel.dataset.mobilePanel === panelName);
+  const targetPanel = isMobileViewport()
+    ? mobilePanel
+    : panelName === "listings" || panelName === "add"
+      ? elements.overlayRight
+      : elements.overlayLeft;
+
+  if (!targetPanel) {
+    return;
+  }
+
+  resetScrollTop(targetPanel);
+}
+
+function resetScrollTop(element) {
+  const scrollToTop = () => {
+    element.scrollTop = 0;
+    if (typeof element.scrollTo === "function") {
+      element.scrollTo({
+        top: 0,
+        behavior: "auto"
+      });
+    }
+  };
+
+  scrollToTop();
+  window.requestAnimationFrame(scrollToTop);
+  window.setTimeout(scrollToTop, 220);
 }
 
 function isMobileViewport() {
