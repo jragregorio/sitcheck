@@ -72,6 +72,7 @@ const state = {
     payment: "any",
     cleanliness: 0
   },
+  sort: "default",
   ui: {
     mobileTab: null,
     desktopPanel: "listings",
@@ -92,6 +93,7 @@ const elements = {
   paymentFilter: document.querySelector("#payment-filter"),
   cleanlinessFilter: document.querySelector("#cleanliness-filter"),
   clearFiltersButton: document.querySelector("#clear-filters"),
+  sortButtons: document.querySelectorAll("[data-sort-option]"),
   totalCount: document.querySelector("#total-count"),
   bidetCount: document.querySelector("#bidet-count"),
   freeCount: document.querySelector("#free-count"),
@@ -132,6 +134,7 @@ let contributionMarker;
 let contributionMarkerVisible = false;
 let isLocatingUser = false;
 let toastTimeoutId = 0;
+let userLocation = null;
 
 bindEvents();
 initMap();
@@ -214,6 +217,20 @@ function bindEvents() {
   elements.clearFiltersButton.addEventListener("click", () => {
     resetFilters();
     render();
+  });
+
+  elements.sortButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextSort = button.dataset.sortOption;
+
+      if (nextSort === "nearest" && !userLocation) {
+        showToast("Use your location first to sort by nearest.", "error");
+        return;
+      }
+
+      state.sort = nextSort;
+      render();
+    });
   });
 
   elements.form.addEventListener("submit", async (event) => {
@@ -305,8 +322,9 @@ function initMap() {
 }
 
 function render() {
-  const visibleListings = getFilteredListings();
+  const visibleListings = getVisibleListings();
   syncFilterUI();
+  syncSortUI();
   updateMobileUI();
   updateDesktopUI();
   renderStats();
@@ -397,12 +415,19 @@ function locateUser() {
       const accuracy = coords.accuracy;
 
       renderUserLocation(latitude, longitude, accuracy);
+      userLocation = {
+        latitude,
+        longitude
+      };
       map.flyTo([latitude, longitude], Math.max(map.getZoom(), 15), {
         animate: true,
         duration: 1
       });
       elements.mapSummary.textContent = "Centered on your current location.";
       setLocateButtonState(false);
+      if (state.sort === "nearest") {
+        render();
+      }
     },
     (error) => {
       elements.mapSummary.textContent = getLocationErrorMessage(error);
@@ -692,12 +717,57 @@ function renderSummary(listings) {
   elements.resultsSummary.textContent = `Showing ${listings.length} ${suffix} from ${state.listings.length} total.`;
 }
 
+function getVisibleListings() {
+  return sortListings(getFilteredListings());
+}
+
+function sortListings(listings) {
+  const nextListings = [...listings];
+
+  if (state.sort === "alpha") {
+    nextListings.sort((a, b) => a.name.localeCompare(b.name));
+    return nextListings;
+  }
+
+  if (state.sort === "nearest" && userLocation) {
+    nextListings.sort((a, b) => {
+      const distanceA = getDistanceFromUser(a);
+      const distanceB = getDistanceFromUser(b);
+      return distanceA - distanceB;
+    });
+  }
+
+  return nextListings;
+}
+
 function syncFilterUI() {
   elements.searchInput.value = state.filters.search;
   elements.bidetFilter.value = state.filters.bidet;
   elements.paymentFilter.value = state.filters.payment;
   elements.cleanlinessFilter.value = String(state.filters.cleanliness);
   elements.clearFiltersButton.hidden = !hasActiveFilters();
+}
+
+function syncSortUI() {
+  if (!elements.sortButtons.length) {
+    return;
+  }
+
+  if (state.sort === "nearest" && !userLocation) {
+    state.sort = "default";
+  }
+
+  elements.sortButtons.forEach((button) => {
+    const sortOption = button.dataset.sortOption;
+    const isActive = sortOption === state.sort;
+    const needsLocation = sortOption === "nearest" && !userLocation;
+
+    button.classList.toggle("primary", isActive);
+    button.classList.toggle("secondary", !isActive);
+    button.classList.toggle("is-muted", needsLocation && !isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+    button.title = needsLocation ? "Enable location to use nearest sort." : "";
+  });
 }
 
 function hasActiveFilters() {
@@ -714,6 +784,37 @@ function resetFilters() {
   state.filters.bidet = "any";
   state.filters.payment = "any";
   state.filters.cleanliness = 0;
+}
+
+function getDistanceFromUser(listing) {
+  if (!userLocation || !Number.isFinite(listing.latitude) || !Number.isFinite(listing.longitude)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return getDistanceBetweenCoordinates(
+    userLocation.latitude,
+    userLocation.longitude,
+    listing.latitude,
+    listing.longitude
+  );
+}
+
+function getDistanceBetweenCoordinates(latitudeA, longitudeA, latitudeB, longitudeB) {
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(latitudeB - latitudeA);
+  const dLng = toRadians(longitudeB - longitudeA);
+  const lat1 = toRadians(latitudeA);
+  const lat2 = toRadians(latitudeB);
+
+  const haversine =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLng / 2) * Math.sin(dLng / 2) * Math.cos(lat1) * Math.cos(lat2);
+
+  return 2 * earthRadiusKm * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function toRadians(value) {
+  return value * (Math.PI / 180);
 }
 
 async function initializeRemoteListings() {
