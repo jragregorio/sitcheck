@@ -57,6 +57,10 @@ body {
   display: none;
 }
 
+.mobile-moderator-button {
+  display: none;
+}
+
 [hidden] {
   display: none !important;
 }
@@ -891,6 +895,34 @@ h2 {
   .hero-text,
   .hero-actions {
     display: none;
+  }
+
+  .mobile-moderator-button {
+    display: inline-flex;
+    position: fixed;
+    top: 182px;
+    left: 12px;
+    z-index: 33;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--text);
+    font-weight: 700;
+    font-size: 1.35rem;
+    line-height: 1;
+    text-decoration: none;
+    box-shadow: 0 12px 28px rgba(19, 34, 56, 0.18);
+    backdrop-filter: blur(10px);
+    pointer-events: auto;
+  }
+
+  .mobile-moderator-button:hover {
+    background: #fff;
   }
 
   h1 {

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SitCheck Moderator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Inter", sans-serif;
+      --text: #132238;
+      --muted: #5f6f86;
+      --line: rgba(215, 225, 238, 0.9);
+      --panel: rgba(255, 255, 255, 0.96);
+      --primary: #2457f5;
+      --primary-dark: #153bb6;
+      --ok-bg: #e9fdf8;
+      --ok-text: #087364;
+      --warn-bg: #fff4df;
+      --warn-text: #9a5d00;
+      --danger-bg: #ffe9ee;
+      --danger-text: #9a1d35;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #eef4ff 0%, #f8fbff 100%);
+      color: var(--text);
+      padding: 20px;
+    }
+
+    .shell {
+      max-width: 980px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--panel);
+      box-shadow: 0 18px 40px rgba(19, 34, 56, 0.12);
+      padding: 22px;
+    }
+
+    .heading-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .heading-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--primary);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .status {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #f8fbff;
+      font-size: 0.94rem;
+    }
+
+    .status.is-error {
+      background: var(--danger-bg);
+      color: var(--danger-text);
+      border-color: rgba(154, 29, 53, 0.24);
+    }
+
+    .status.is-success {
+      background: var(--ok-bg);
+      color: var(--ok-text);
+      border-color: rgba(8, 115, 100, 0.2);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      text-decoration: none;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      line-height: 1;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .button.primary {
+      background: var(--primary);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .button.primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .button.warn {
+      background: var(--warn-bg);
+      color: var(--warn-text);
+      border-color: rgba(154, 93, 0, 0.2);
+    }
+
+    .button.danger {
+      background: var(--danger-bg);
+      color: var(--danger-text);
+      border-color: rgba(154, 29, 53, 0.2);
+    }
+
+    .button:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+
+    .auth-form {
+      display: grid;
+      gap: 12px;
+      max-width: 420px;
+      margin-top: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .field input,
+    .queue-filter {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .queue-list {
+      margin-top: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .queue-item {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .queue-item h3 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .queue-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: #eef4ff;
+      color: #2457f5;
+    }
+
+    .tag.pending {
+      background: var(--warn-bg);
+      color: var(--warn-text);
+    }
+
+    .tag.approved {
+      background: var(--ok-bg);
+      color: var(--ok-text);
+    }
+
+    .tag.rejected {
+      background: var(--danger-bg);
+      color: var(--danger-text);
+    }
+
+    .queue-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="card">
+      <div class="heading-row">
+        <div>
+          <p class="eyebrow">SitCheck</p>
+          <h1>Moderator Console</h1>
+          <p>Review submissions and approve or reject entries.</p>
+        </div>
+        <div class="heading-actions">
+          <a class="button" href="index.html">Back to Map</a>
+          <button id="sign-out-button" class="button hidden" type="button">Sign Out</button>
+        </div>
+      </div>
+      <div id="page-status" class="status hidden" role="status" aria-live="polite"></div>
+    </section>
+
+    <section id="auth-card" class="card">
+      <h2>Moderator login</h2>
+      <p>Sign in with your moderator account.</p>
+      <form id="auth-form" class="auth-form">
+        <label class="field">
+          <span>Email</span>
+          <input id="email-input" type="email" required autocomplete="email">
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input id="password-input" type="password" required autocomplete="current-password">
+        </label>
+        <button id="sign-in-button" class="button primary" type="submit">Sign in</button>
+      </form>
+    </section>
+
+    <section id="queue-card" class="card hidden">
+      <div class="heading-row">
+        <div>
+          <h2>Submission queue</h2>
+          <p id="session-label"></p>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <select id="queue-filter" class="queue-filter" aria-label="Filter queue">
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="all">All</option>
+        </select>
+        <div class="toolbar-actions">
+          <button id="refresh-button" class="button" type="button">Refresh</button>
+        </div>
+      </div>
+
+      <div id="queue-list" class="queue-list"></div>
+    </section>
+  </main>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+    crossorigin="anonymous"
+  ></script>
+  <script src="config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
