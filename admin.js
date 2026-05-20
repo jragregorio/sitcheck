@@ -4,6 +4,7 @@ const SUPABASE_TABLES = {
 
 const SUBMISSION_FIELDS_WITH_REVIEW = "id, created_at, name, location_text, latitude, longitude, has_bidet, cleanliness, pressure_level, payment_required, fee, notes, status, reviewed_at";
 const SUBMISSION_FIELDS_BASE = "id, created_at, name, location_text, latitude, longitude, has_bidet, cleanliness, pressure_level, payment_required, fee, notes";
+const EMBED_DELTA = 0.0045;
 
 const supabaseConfig = window.SITCHECK_CONFIG || {};
 const supabaseUrl = typeof supabaseConfig.supabaseUrl === "string" ? supabaseConfig.supabaseUrl.trim() : "";
@@ -197,6 +198,8 @@ function renderQueue(records) {
     const location = document.createElement("p");
     location.textContent = record.location_text || "Location not provided";
 
+    const snapshot = createLocationSnapshot(record);
+
     const meta = document.createElement("div");
     meta.className = "queue-meta";
     meta.appendChild(createTag((record.status || "pending").toLowerCase(), (record.status || "pending").toLowerCase()));
@@ -234,7 +237,7 @@ function renderQueue(records) {
     });
 
     actions.append(approveButton, rejectButton);
-    card.append(title, location, meta, notes, submitted, actions);
+    card.append(title, location, snapshot, meta, notes, submitted, actions);
     elements.queueList.appendChild(card);
   });
 }
@@ -272,6 +275,61 @@ function createTag(text, variant = "") {
   tag.className = `tag ${variant}`.trim();
   tag.textContent = text;
   return tag;
+}
+
+function createLocationSnapshot(record) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "queue-location-snapshot";
+
+  const latitude = Number(record.latitude);
+  const longitude = Number(record.longitude);
+
+  if (!hasValidCoordinates(latitude, longitude)) {
+    const unavailable = document.createElement("p");
+    unavailable.textContent = "Map snapshot unavailable: coordinates were not provided.";
+    wrapper.appendChild(unavailable);
+    return wrapper;
+  }
+
+  const mapFrame = document.createElement("iframe");
+  mapFrame.loading = "lazy";
+  mapFrame.referrerPolicy = "no-referrer-when-downgrade";
+  mapFrame.title = `Location snapshot for ${record.name || "submitted restroom"}`;
+  mapFrame.src = buildSnapshotEmbedUrl(latitude, longitude);
+
+  const mapLink = document.createElement("a");
+  mapLink.className = "snapshot-link";
+  mapLink.href = buildExternalMapUrl(latitude, longitude);
+  mapLink.target = "_blank";
+  mapLink.rel = "noopener noreferrer";
+  mapLink.textContent = "Open in map";
+
+  wrapper.append(mapFrame, mapLink);
+  return wrapper;
+}
+
+function hasValidCoordinates(latitude, longitude) {
+  return Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180;
+}
+
+function buildSnapshotEmbedUrl(latitude, longitude) {
+  const minLongitude = (longitude - EMBED_DELTA).toFixed(6);
+  const minLatitude = (latitude - EMBED_DELTA).toFixed(6);
+  const maxLongitude = (longitude + EMBED_DELTA).toFixed(6);
+  const maxLatitude = (latitude + EMBED_DELTA).toFixed(6);
+  const lat = latitude.toFixed(6);
+  const lng = longitude.toFixed(6);
+  const bbox = `${minLongitude}%2C${minLatitude}%2C${maxLongitude}%2C${maxLatitude}`;
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}`;
+}
+
+function buildExternalMapUrl(latitude, longitude) {
+  return `https://www.openstreetmap.org/?mlat=${latitude.toFixed(6)}&mlon=${longitude.toFixed(6)}#map=16/${latitude.toFixed(6)}/${longitude.toFixed(6)}`;
 }
 
 function showStatus(message, isError = false, isSuccess = false) {
