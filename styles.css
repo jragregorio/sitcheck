@@ -490,6 +490,22 @@ h2 {
   background: rgba(238, 244, 255, 0.82);
 }
 
+.pin-helper-copy {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.pin-helper-actions {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  width: 180px;
+  flex-direction: column;
+}
+
 .pin-helper-title,
 .pin-helper-text {
   margin-bottom: 0;
@@ -507,6 +523,7 @@ h2 {
 }
 
 .pin-helper-button {
+  width: 100%;
   flex-shrink: 0;
 }
 
@@ -1112,6 +1129,18 @@ h2 {
   .pin-helper {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .pin-helper-copy {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .pin-helper-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 1fr;
+    flex: 0 0 auto;
   }
 
   .pin-helper-button {

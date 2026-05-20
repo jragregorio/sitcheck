@@ -83,7 +83,9 @@ const state = {
   draft: {
     nameTouched: false,
     locationTouched: false,
-    geocodeRequestId: 0
+    geocodeRequestId: 0,
+    latitude: null,
+    longitude: null
   }
 };
 
@@ -112,6 +114,7 @@ const elements = {
   submitButton: document.querySelector("#submit-listing"),
   pinStatus: document.querySelector("#pin-status"),
   focusPinButton: document.querySelector("#focus-pin"),
+  resetPinButton: document.querySelector("#reset-pin"),
   cardTemplate: document.querySelector("#toilet-card-template"),
   mobileTabButtons: document.querySelectorAll("[data-mobile-tab-button]"),
   mobilePanels: document.querySelectorAll("[data-mobile-panel]"),
@@ -192,6 +195,17 @@ function bindEvents() {
     }
 
     focusContributionPin();
+  });
+
+  elements.resetPinButton.addEventListener("click", () => {
+    if (!contributionMarker) {
+      return;
+    }
+
+    elements.pinStatus.textContent = "Pin reset near the center of the current map view.";
+    placeContributionPinFromCurrentView({
+      focusAfterPlacement: true
+    });
   });
 
   elements.searchInput.addEventListener("input", (event) => {
@@ -994,8 +1008,7 @@ function setMobileTab(tab) {
   }
 
   if (state.ui.mobileTab === "add") {
-    resetContributionDraft();
-    focusContributionPin();
+    prepareContributionDraftForAddPanel();
   }
 }
 
@@ -1009,8 +1022,7 @@ function setDesktopPanel(panel) {
   scrollPanelToTop(panel);
 
   if (panel === "add") {
-    resetContributionDraft();
-    focusContributionPin();
+    prepareContributionDraftForAddPanel();
   }
 }
 
@@ -1256,6 +1268,8 @@ function focusContributionPin() {
 function resetContributionDraft() {
   state.draft.nameTouched = false;
   state.draft.locationTouched = false;
+  state.draft.latitude = null;
+  state.draft.longitude = null;
 
   elements.nameInput.value = "";
   elements.locationInput.value = "";
@@ -1265,15 +1279,84 @@ function resetContributionDraft() {
     return;
   }
 
-  const position = map ? map.getCenter() : { lat: DEFAULT_CENTER[0], lng: DEFAULT_CENTER[1] };
-  contributionMarker.setLatLng(position);
-  applyContributionPosition(position.lat, position.lng);
+  placeContributionPinFromCurrentView();
 }
 
 function applyContributionPosition(latitude, longitude) {
+  state.draft.latitude = latitude;
+  state.draft.longitude = longitude;
   elements.latitudeInput.value = String(latitude);
   elements.longitudeInput.value = String(longitude);
   reverseGeocode(latitude, longitude);
+}
+
+function hasContributionDraftPosition() {
+  return Number.isFinite(state.draft.latitude) && Number.isFinite(state.draft.longitude);
+}
+
+function prepareContributionDraftForAddPanel() {
+  if (!contributionMarker) {
+    return;
+  }
+
+  if (hasContributionDraftPosition()) {
+    contributionMarker.setLatLng([state.draft.latitude, state.draft.longitude]);
+    elements.latitudeInput.value = String(state.draft.latitude);
+    elements.longitudeInput.value = String(state.draft.longitude);
+    elements.pinStatus.textContent = "Draft pin restored. Drag to refine the location if needed.";
+    focusContributionPin();
+    return;
+  }
+
+  elements.pinStatus.textContent = "Pin placed near the center of the current map view. Drag to set the exact location.";
+  placeContributionPinFromCurrentView({
+    focusAfterPlacement: true
+  });
+}
+
+function placeContributionPinFromCurrentView(options = {}) {
+  if (!contributionMarker) {
+    return;
+  }
+
+  const { focusAfterPlacement = false } = options;
+
+  getSettledMapCenter((latitude, longitude) => {
+    contributionMarker.setLatLng([latitude, longitude]);
+    applyContributionPosition(latitude, longitude);
+
+    if (focusAfterPlacement) {
+      focusContributionPin();
+    }
+  });
+}
+
+function getSettledMapCenter(callback) {
+  if (!map) {
+    callback(DEFAULT_CENTER[0], DEFAULT_CENTER[1]);
+    return;
+  }
+
+  let resolved = false;
+  let timeoutId = 0;
+  const onMoveEnd = () => {
+    window.clearTimeout(timeoutId);
+    complete();
+  };
+
+  const complete = () => {
+    if (resolved) {
+      return;
+    }
+
+    resolved = true;
+    map.off("moveend", onMoveEnd);
+    const center = map.getCenter();
+    callback(center.lat, center.lng);
+  };
+
+  timeoutId = window.setTimeout(complete, 180);
+  map.on("moveend", onMoveEnd);
 }
 
 async function reverseGeocode(latitude, longitude) {

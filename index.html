@@ -142,13 +142,16 @@
 
           <form id="listing-form" class="listing-form">
             <div class="pin-helper full-width">
-              <div>
+              <div class="pin-helper-copy">
                 <p class="pin-helper-title">Place the toilet pin on the map</p>
                 <p id="pin-status" class="pin-helper-text">
                   Drag the orange pin on the map to the right spot. We will suggest the location details automatically.
                 </p>
               </div>
-              <button id="focus-pin" type="button" class="button secondary pin-helper-button">Focus pin</button>
+              <div class="pin-helper-actions">
+                <button id="focus-pin" type="button" class="button secondary pin-helper-button">Focus pin</button>
+                <button id="reset-pin" type="button" class="button secondary pin-helper-button">Reset pin</button>
+              </div>
             </div>
 
             <label class="field">
