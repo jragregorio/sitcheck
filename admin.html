@@ -52,6 +52,13 @@
       padding: 22px;
     }
 
+    .header-card {
+      position: sticky;
+      top: 12px;
+      z-index: 30;
+      backdrop-filter: blur(8px);
+    }
+
     .heading-row {
       display: flex;
       align-items: flex-start;
@@ -281,11 +288,17 @@
       gap: 8px;
       flex-wrap: wrap;
     }
+
+    @media (max-width: 860px) {
+      .header-card {
+        top: 8px;
+      }
+    }
   </style>
 </head>
 <body>
   <main class="shell">
-    <section class="card">
+    <section class="card header-card">
       <div class="heading-row">
         <div>
           <p class="eyebrow">SitCheck</p>
