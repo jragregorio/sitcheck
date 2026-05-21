@@ -16,6 +16,20 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div id="app-splash" class="app-splash" role="status" aria-live="polite" aria-atomic="true">
+    <div class="app-splash-card">
+      <p class="app-splash-eyebrow">SitCheck</p>
+      <h2 class="app-splash-title">Finding nearby toilets</h2>
+      <div class="app-splash-line-track" aria-hidden="true">
+        <p id="app-splash-line" class="app-splash-line">Calibrating bidet radar...</p>
+      </div>
+      <div class="app-splash-progress" aria-hidden="true">
+        <span class="app-splash-progress-fill"></span>
+      </div>
+    </div>
+    <p class="app-splash-credit">Made by JRAG</p>
+  </div>
+
   <div id="map" class="map-canvas" aria-label="Map of toilet locations"></div>
 
   <div class="app-overlay">
@@ -299,6 +313,9 @@
     </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <a class="mobile-about-button" href="about.html" aria-label="Open about page" title="About SitCheck">
+      <span aria-hidden="true">☕</span>
+    </a>
     <a class="mobile-moderator-button" href="admin.html" aria-label="Open moderator login page" title="Moderator login">
       <span aria-hidden="true">🔐</span>
     </a>

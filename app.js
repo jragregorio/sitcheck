@@ -5,6 +5,21 @@ const SUPABASE_TABLES = {
   toilets: "toilets",
   submissions: "toilet_submissions"
 };
+const AUTO_LOCATE_DELAY_MS = 450;
+const RETURN_MAP_VIEW_SESSION_KEY = "sitcheck-return-map-view";
+const SPLASH_SEEN_SESSION_KEY = "sitcheck-splash-seen";
+const SPLASH_MIN_DURATION_MS = 5000;
+const SPLASH_FADE_DURATION_MS = 1400;
+const SPLASH_LINE_CYCLE_MS = 2000;
+const SPLASH_LOADING_LINES = [
+  "Calibrating bidet radar...",
+  "Scanning for hero restrooms...",
+  "Checking splash pressure...",
+  "Estimating tissue refill rates...",
+  "Counting clean seats...",
+  "Routing your relief run..."
+];
+const splashStartedAtMs = Date.now();
 
 const defaultListings = [
   {
@@ -103,7 +118,9 @@ const elements = {
   mapSummary: document.querySelector("#map-summary"),
   addFormNote: document.querySelector("#add-form-note"),
   cardGrid: document.querySelector("#card-grid"),
+  splashOverlay: document.querySelector("#app-splash"),
   toast: document.querySelector("#toast"),
+  aboutButton: document.querySelector(".mobile-about-button"),
   locateButton: null,
   form: document.querySelector("#listing-form"),
   nameInput: document.querySelector('input[name="name"]'),
@@ -121,6 +138,7 @@ const elements = {
   mobileTargetLinks: document.querySelectorAll("[data-mobile-target]"),
   overlayLeft: document.querySelector(".overlay-left"),
   overlayRight: document.querySelector(".overlay-right"),
+  splashLine: document.querySelector("#app-splash-line"),
   desktopPanels: {
     listings: document.querySelector("#toilet-list"),
     add: document.querySelector("#add-form")
@@ -138,7 +156,15 @@ let contributionMarkerVisible = false;
 let isLocatingUser = false;
 let toastTimeoutId = 0;
 let userLocation = null;
+let hasHiddenSplash = false;
+let hasAttemptedAutoLocate = false;
+let hasShownLocationEnabledToast = false;
+let splashLineIntervalId = 0;
+let lastSplashLineIndex = -1;
+let pendingReturnMapView = loadReturnMapView();
 
+initializeSplashVisibility();
+initializeSplashLineRotation();
 bindEvents();
 initMap();
 syncDataModeUI();
@@ -146,6 +172,9 @@ render();
 
 if (supabaseClient) {
   void initializeRemoteListings();
+} else {
+  scheduleSplashHide();
+  scheduleAutoLocateUser();
 }
 
 function bindEvents() {
@@ -181,6 +210,12 @@ function bindEvents() {
         event.preventDefault();
         setDesktopPanel(targetTab);
       }
+    });
+  });
+
+  document.querySelectorAll('a[href="about.html"], a[href="admin.html"]').forEach((link) => {
+    link.addEventListener("click", () => {
+      saveReturnMapView();
     });
   });
 
@@ -396,6 +431,12 @@ function renderMap(listings) {
   });
 
   if (bounds.length) {
+    if (restoreReturnMapView()) {
+      const suffix = listings.length === 1 ? "pin" : "pins";
+      elements.mapSummary.textContent = `Showing ${listings.length} ${suffix} on the map.`;
+      return;
+    }
+
     map.fitBounds(bounds, {
       paddingTopLeft: getMapFitPadding().topLeft,
       paddingBottomRight: getMapFitPadding().bottomRight,
@@ -409,18 +450,92 @@ function renderMap(listings) {
   elements.mapSummary.textContent = `Showing ${listings.length} ${suffix} on the map.`;
 }
 
-function locateUser() {
+function saveReturnMapView() {
   if (!map) {
-    elements.mapSummary.textContent = "Map is still loading.";
+    return;
+  }
+
+  const center = map.getCenter();
+  const view = {
+    latitude: center.lat,
+    longitude: center.lng,
+    zoom: map.getZoom()
+  };
+
+  try {
+    window.sessionStorage.setItem(RETURN_MAP_VIEW_SESSION_KEY, JSON.stringify(view));
+  } catch {
+    // Ignore storage failures; map can still fall back to normal fit behavior.
+  }
+}
+
+function loadReturnMapView() {
+  try {
+    const storedValue = window.sessionStorage.getItem(RETURN_MAP_VIEW_SESSION_KEY);
+
+    if (!storedValue) {
+      return null;
+    }
+
+    const parsed = JSON.parse(storedValue);
+    const latitude = Number(parsed.latitude);
+    const longitude = Number(parsed.longitude);
+    const zoom = Number(parsed.zoom);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(zoom)) {
+      return null;
+    }
+
+    return {
+      latitude,
+      longitude,
+      zoom
+    };
+  } catch {
+    return null;
+  }
+}
+
+function restoreReturnMapView() {
+  if (!map || !pendingReturnMapView) {
+    return false;
+  }
+
+  map.setView([pendingReturnMapView.latitude, pendingReturnMapView.longitude], pendingReturnMapView.zoom, {
+    animate: false
+  });
+  pendingReturnMapView = null;
+
+  try {
+    window.sessionStorage.removeItem(RETURN_MAP_VIEW_SESSION_KEY);
+  } catch {
+    // Ignore storage failures after successful restore.
+  }
+
+  return true;
+}
+
+function locateUser(options = {}) {
+  const { silentOnError = false } = options;
+
+  if (!map) {
+    if (!silentOnError) {
+      elements.mapSummary.textContent = "Map is still loading.";
+    }
     return;
   }
 
   if (!navigator.geolocation) {
-    elements.mapSummary.textContent = "Current location is not supported by this browser.";
+    if (!silentOnError) {
+      elements.mapSummary.textContent = "Current location is not supported by this browser.";
+    }
     return;
   }
 
   setLocateButtonState(true);
+  if (!silentOnError) {
+    showToast("Fetching your location...", "success");
+  }
 
   navigator.geolocation.getCurrentPosition(
     ({ coords }) => {
@@ -433,18 +548,22 @@ function locateUser() {
         latitude,
         longitude
       };
+      updateLocateButtonActiveState();
       map.flyTo([latitude, longitude], Math.max(map.getZoom(), 15), {
         animate: true,
         duration: 1
       });
       elements.mapSummary.textContent = "Centered on your current location.";
       setLocateButtonState(false);
+      showLocationEnabledToast();
       if (state.sort === "nearest") {
         render();
       }
     },
     (error) => {
-      elements.mapSummary.textContent = getLocationErrorMessage(error);
+      if (!silentOnError) {
+        elements.mapSummary.textContent = getLocationErrorMessage(error);
+      }
       setLocateButtonState(false);
     },
     {
@@ -462,6 +581,16 @@ function renderUserLocation(latitude, longitude, accuracy = 50) {
 
   const latLng = [latitude, longitude];
   userLocationLayer.clearLayers();
+
+  L.circleMarker(latLng, {
+    radius: 18,
+    color: "#2457f5",
+    weight: 2,
+    opacity: 0.35,
+    fillColor: "#2457f5",
+    fillOpacity: 0.12,
+    className: "user-location-pulse"
+  }).addTo(userLocationLayer);
 
   L.circle(latLng, {
     radius: Math.max(accuracy, 30),
@@ -489,8 +618,39 @@ function setLocateButtonState(isLocating) {
   }
 
   elements.locateButton.disabled = isLocating;
-  elements.locateButton.setAttribute("aria-label", isLocating ? "Locating current position" : "Use my location");
-  elements.locateButton.title = isLocating ? "Locating..." : "Use my location";
+  elements.locateButton.classList.toggle("is-locating", isLocating);
+  updateLocateButtonActiveState();
+}
+
+function updateLocateButtonActiveState() {
+  if (!elements.locateButton) {
+    return;
+  }
+
+  const isLocationActive = hasValidUserLocation();
+  elements.locateButton.classList.toggle("is-active", isLocationActive);
+  elements.locateButton.setAttribute(
+    "aria-label",
+    isLocatingUser
+      ? "Locating current position"
+      : isLocationActive
+        ? "Location enabled"
+        : "Use my location"
+  );
+  elements.locateButton.title = isLocatingUser
+    ? "Locating..."
+    : isLocationActive
+      ? "Location enabled"
+      : "Use my location";
+}
+
+function showLocationEnabledToast() {
+  if (hasShownLocationEnabledToast) {
+    return;
+  }
+
+  hasShownLocationEnabledToast = true;
+  showToast("Location enabled. Centered on you.", "success");
 }
 
 function setSubmitButtonState(isSubmitting) {
@@ -842,7 +1002,120 @@ async function initializeRemoteListings() {
   } finally {
     state.ui.isLoadingListings = false;
     render();
+    scheduleSplashHide();
+    scheduleAutoLocateUser();
   }
+}
+
+function scheduleAutoLocateUser() {
+  if (hasAttemptedAutoLocate) {
+    return;
+  }
+
+  hasAttemptedAutoLocate = true;
+  window.setTimeout(() => {
+    locateUser({
+      silentOnError: true
+    });
+  }, AUTO_LOCATE_DELAY_MS);
+}
+
+function scheduleSplashHide() {
+  if (hasHiddenSplash || !elements.splashOverlay) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      hideSplashOverlay();
+    });
+  });
+}
+
+function hideSplashOverlay() {
+  if (hasHiddenSplash || !elements.splashOverlay) {
+    return;
+  }
+
+  const elapsedMs = Date.now() - splashStartedAtMs;
+  const delayMs = Math.max(0, SPLASH_MIN_DURATION_MS - elapsedMs);
+
+  window.setTimeout(() => {
+    if (hasHiddenSplash || !elements.splashOverlay) {
+      return;
+    }
+
+    hasHiddenSplash = true;
+    stopSplashLineRotation();
+    markSplashSeenInSession();
+    elements.splashOverlay.classList.add("is-hiding");
+
+    window.setTimeout(() => {
+      if (!elements.splashOverlay) {
+        return;
+      }
+
+      elements.splashOverlay.hidden = true;
+    }, SPLASH_FADE_DURATION_MS + 40);
+  }, delayMs);
+}
+
+function initializeSplashVisibility() {
+  if (!elements.splashOverlay || !hasSeenSplashInSession()) {
+    return;
+  }
+
+  hasHiddenSplash = true;
+  elements.splashOverlay.hidden = true;
+}
+
+function hasSeenSplashInSession() {
+  try {
+    return window.sessionStorage.getItem(SPLASH_SEEN_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markSplashSeenInSession() {
+  try {
+    window.sessionStorage.setItem(SPLASH_SEEN_SESSION_KEY, "1");
+  } catch {
+    // Ignore storage write issues and continue splash flow.
+  }
+}
+
+function initializeSplashLineRotation() {
+  if (!elements.splashLine || hasHiddenSplash) {
+    return;
+  }
+
+  setNextSplashLine();
+  splashLineIntervalId = window.setInterval(setNextSplashLine, SPLASH_LINE_CYCLE_MS);
+}
+
+function stopSplashLineRotation() {
+  if (!splashLineIntervalId) {
+    return;
+  }
+
+  window.clearInterval(splashLineIntervalId);
+  splashLineIntervalId = 0;
+}
+
+function setNextSplashLine() {
+  if (!elements.splashLine || !SPLASH_LOADING_LINES.length) {
+    return;
+  }
+
+  let nextIndex = Math.floor(Math.random() * SPLASH_LOADING_LINES.length);
+
+  if (SPLASH_LOADING_LINES.length > 1 && nextIndex === lastSplashLineIndex) {
+    nextIndex = (nextIndex + 1) % SPLASH_LOADING_LINES.length;
+  }
+
+  lastSplashLineIndex = nextIndex;
+  elements.splashLine.textContent = SPLASH_LOADING_LINES[nextIndex];
 }
 
 async function fetchSupabaseListings() {
@@ -1001,7 +1274,7 @@ function setMobileTab(tab) {
     state.ui.mobileTab = tab;
   }
 
-  render();
+  updateMobileUI();
 
   if (state.ui.mobileTab) {
     scrollPanelToTop(state.ui.mobileTab);
@@ -1038,7 +1311,17 @@ function updateMobileUI() {
     panel.classList.toggle("is-active", isActive);
   });
 
+  updateAboutButtonVisibility();
   updateContributionMarkerVisibility();
+}
+
+function updateAboutButtonVisibility() {
+  if (!elements.aboutButton) {
+    return;
+  }
+
+  const shouldHideOnMobile = isMobileViewport() && Boolean(state.ui.mobileTab);
+  elements.aboutButton.hidden = shouldHideOnMobile;
 }
 
 function updateDesktopUI() {
@@ -1252,17 +1535,48 @@ function focusContributionPin() {
     return;
   }
 
-  const markerPoint = map.latLngToContainerPoint(contributionMarker.getLatLng());
-  const targetPoint = getContributionPinTargetPoint();
-  const offset = [
-    markerPoint.x - targetPoint.x,
-    markerPoint.y - targetPoint.y
-  ];
+  const panToTarget = () => {
+    if (!map || !contributionMarker) {
+      return;
+    }
 
-  map.panBy(offset, {
-    animate: true,
-    duration: 0.4
+    const markerPoint = map.latLngToContainerPoint(contributionMarker.getLatLng());
+    const targetPoint = getContributionPinTargetPoint();
+    const offset = [
+      markerPoint.x - targetPoint.x,
+      markerPoint.y - targetPoint.y
+    ];
+
+    map.panBy(offset, {
+      animate: true,
+      duration: 0.4
+    });
+  };
+
+  waitForContributionFocusReady(() => {
+    window.requestAnimationFrame(() => {
+      panToTarget();
+    });
   });
+}
+
+function waitForContributionFocusReady(callback) {
+  const settleDelayMs = isMobileViewport() ? 320 : 120;
+
+  const waitForLayout = () => {
+    window.setTimeout(() => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(callback);
+      });
+    }, settleDelayMs);
+  };
+
+  if (!map || !map._panAnim?._inProgress) {
+    waitForLayout();
+    return;
+  }
+
+  map.once("moveend", waitForLayout);
 }
 
 function resetContributionDraft() {
@@ -1279,7 +1593,8 @@ function resetContributionDraft() {
     return;
   }
 
-  placeContributionPinFromCurrentView();
+  elements.latitudeInput.value = "";
+  elements.longitudeInput.value = "";
 }
 
 function applyContributionPosition(latitude, longitude) {
@@ -1308,9 +1623,28 @@ function prepareContributionDraftForAddPanel() {
     return;
   }
 
-  elements.pinStatus.textContent = "Pin placed near the center of the current map view. Drag to set the exact location.";
-  placeContributionPinFromCurrentView({
+  elements.pinStatus.textContent = userLocation
+    ? "Pin placed at your detected location. Drag to set the exact toilet location."
+    : "Pin placed near the center of the current map view. Drag to set the exact location.";
+  placeContributionPinAtPreferredLocation({
     focusAfterPlacement: true
+  });
+}
+
+function placeContributionPinAtPreferredLocation(options = {}) {
+  if (!contributionMarker) {
+    return;
+  }
+
+  const { focusAfterPlacement = false } = options;
+
+  getPreferredContributionPosition((latitude, longitude) => {
+    contributionMarker.setLatLng([latitude, longitude]);
+    applyContributionPosition(latitude, longitude);
+
+    if (focusAfterPlacement) {
+      focusContributionPin();
+    }
   });
 }
 
@@ -1329,6 +1663,21 @@ function placeContributionPinFromCurrentView(options = {}) {
       focusContributionPin();
     }
   });
+}
+
+function getPreferredContributionPosition(callback) {
+  if (hasValidUserLocation()) {
+    callback(userLocation.latitude, userLocation.longitude);
+    return;
+  }
+
+  getSettledMapCenter(callback);
+}
+
+function hasValidUserLocation() {
+  return Boolean(userLocation) &&
+    Number.isFinite(userLocation.latitude) &&
+    Number.isFinite(userLocation.longitude);
 }
 
 function getSettledMapCenter(callback) {
@@ -1435,15 +1784,39 @@ function getContributionPinTargetPoint() {
   const size = map.getSize();
 
   if (isMobileViewport()) {
+    const visibleBounds = getVisibleContributionMapBounds(size);
+
     return {
       x: size.x / 2,
-      y: size.y * 0.42
+      y: (visibleBounds.top + visibleBounds.bottom) / 2
     };
   }
 
   return {
     x: size.x * 0.58,
     y: size.y * 0.48
+  };
+}
+
+function getVisibleContributionMapBounds(size) {
+  const top = Math.min(size.y, getVisibleMapTopBoundary());
+  const activeAddPanel = document.querySelector('#add-form.mobile-panel.is-active');
+
+  if (!activeAddPanel) {
+    return {
+      top,
+      bottom: size.y * 0.84
+    };
+  }
+
+  const panelRect = activeAddPanel.getBoundingClientRect();
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const panelTop = Math.max(0, panelRect.top - mapRect.top);
+  const bottom = Math.max(top + 80, panelTop - 16);
+
+  return {
+    top,
+    bottom: Math.min(size.y, bottom)
   };
 }
 
