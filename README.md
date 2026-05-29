@@ -37,6 +37,24 @@ python -m http.server 8000
 
 Then open `http://localhost:8000`.
 
+## Rebuild Android release bundle
+
+From the project root in PowerShell, set Java 17 (required by Gradle) and build the Play Console bundle:
+
+```powershell
+$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
+$env:Path="$env:JAVA_HOME\bin;$env:Path"
+npm run android:bundle:release
+```
+
+Upload this file to Play Console:
+
+```text
+android/app/build/outputs/bundle/release/app-release.aab
+```
+
+If Gradle reports Java 8, run the `$env:JAVA_HOME` and `$env:Path` lines again in the same terminal before rebuilding.
+
 ## Demo features
 
 - responsive landing page

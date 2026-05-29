@@ -871,7 +871,10 @@ h2 {
   font-weight: 600;
 }
 
-.field.full-width {
+.field.full-width,
+.toggle-pair.full-width,
+.toggle-stack.full-width,
+.toggle-row.full-width {
   grid-column: 1 / -1;
 }
 
@@ -896,6 +899,135 @@ h2 {
 .field textarea:focus {
   outline: 2px solid rgba(36, 87, 245, 0.18);
   border-color: var(--primary);
+}
+
+.toggle-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 44px;
+}
+
+.toggle-row .toggle-label {
+  flex: 0 0 auto;
+  min-width: 7.5rem;
+}
+
+.toggle-switch-fill {
+  flex: 1;
+  min-width: 0;
+}
+
+.toggle-switch-fill .toggle-track {
+  width: 100%;
+  height: 36px;
+}
+
+.toggle-switch-fill .toggle-track::after {
+  top: 3px;
+  left: 3px;
+  width: min(110px, calc(100% - 6px));
+  height: calc(100% - 6px);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(19, 34, 56, 0.18);
+  transform: none;
+  transition:
+    left 180ms ease,
+    right 180ms ease,
+    background 180ms ease;
+}
+
+.toggle-switch-fill .toggle-input:checked + .toggle-track::after {
+  left: auto;
+  right: 3px;
+  transform: none;
+}
+
+.field.toggle-field {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 4px 0;
+}
+
+.toggle-label {
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.field.toggle-field .toggle-label {
+  flex: 1;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.toggle-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.toggle-track {
+  display: block;
+  width: 52px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(95, 111, 134, 0.32);
+  transition: background 180ms ease;
+  position: relative;
+}
+
+.toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(19, 34, 56, 0.18);
+  transition: transform 180ms ease;
+}
+
+.toggle-input:checked + .toggle-track {
+  background: var(--primary);
+}
+
+.toggle-input:checked + .toggle-track::after {
+  transform: translateX(22px);
+}
+
+
+.toggle-input:focus-visible + .toggle-track {
+  outline: 2px solid rgba(36, 87, 245, 0.18);
+  outline-offset: 2px;
+}
+
+.field input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .card-grid {

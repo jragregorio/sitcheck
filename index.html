@@ -181,13 +181,22 @@
             <input name="latitude" type="hidden">
             <input name="longitude" type="hidden">
 
-            <label class="field">
-              <span>Has bidet?</span>
-              <select name="hasBidet">
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            </label>
+            <div class="toggle-stack full-width">
+              <div class="toggle-row">
+                <span class="toggle-label" id="has-bidet-label">Has Bidet?</span>
+                <label class="toggle-switch toggle-switch-fill" for="has-bidet-input">
+                  <input class="toggle-input" type="checkbox" id="has-bidet-input" name="hasBidet" value="true" checked>
+                  <span class="toggle-track" aria-hidden="true"></span>
+                </label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label" id="has-tissue-label">Has Tissue?</span>
+                <label class="toggle-switch toggle-switch-fill" for="has-tissue-input">
+                  <input class="toggle-input" type="checkbox" id="has-tissue-input" name="hasTissue" value="true" checked>
+                  <span class="toggle-track" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
 
             <label class="field">
               <span>Cleanliness</span>
@@ -276,13 +285,13 @@
               </div>
             </fieldset>
 
-            <label class="field">
-              <span>Payment required?</span>
-              <select name="paymentRequired">
-                <option value="false">No</option>
-                <option value="true">Yes</option>
-              </select>
-            </label>
+            <div class="toggle-row full-width">
+              <span class="toggle-label" id="payment-required-label">Payment required?</span>
+              <label class="toggle-switch toggle-switch-fill" for="payment-required-input">
+                <input class="toggle-input" type="checkbox" id="payment-required-input" name="paymentRequired" value="true">
+                <span class="toggle-track" aria-hidden="true"></span>
+              </label>
+            </div>
 
             <label class="field">
               <span>Fee amount</span>

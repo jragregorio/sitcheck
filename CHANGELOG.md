@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.10] - 2026-05-29
+
+### Changed
+- Polished contribute form toggles with full-width pill handles for Has Bidet?, Has Tissue?, and Payment required?.
+
+## [1.2.9] - 2026-05-29
+
+### Changed
+- Improved the contribute form layout so Has Bidet? and Has Tissue? toggles appear side by side with labels above each switch.
+
+## [1.2.8] - 2026-05-29
+
+### Changed
+- Replaced Yes/No dropdowns in the contribute form with modern toggle switches for bidet, tissue, and payment fields.
+
+## [1.2.7] - 2026-05-29
+
+### Added
+- Added a Has tissue? field to contributions and listing displays, including Supabase and moderator queue support.
+
 ## [1.2.6] - 2026-05-29
 
 ### Fixed

@@ -28,6 +28,7 @@ const defaultListings = [
     latitude: 14.5528,
     longitude: 121.0246,
     hasBidet: true,
+    hasTissue: true,
     cleanliness: 4,
     pressureLevel: 4,
     paymentRequired: true,
@@ -40,6 +41,7 @@ const defaultListings = [
     latitude: 14.5563,
     longitude: 121.0234,
     hasBidet: false,
+    hasTissue: true,
     cleanliness: 3,
     pressureLevel: 2,
     paymentRequired: false,
@@ -52,6 +54,7 @@ const defaultListings = [
     latitude: 14.6549,
     longitude: 121.0311,
     hasBidet: true,
+    hasTissue: true,
     cleanliness: 5,
     pressureLevel: 5,
     paymentRequired: false,
@@ -64,6 +67,7 @@ const defaultListings = [
     latitude: 14.676,
     longitude: 121.0437,
     hasBidet: false,
+    hasTissue: false,
     cleanliness: 2,
     pressureLevel: 1,
     paymentRequired: true,
@@ -127,6 +131,8 @@ const elements = {
   locationInput: document.querySelector('input[name="location"]'),
   latitudeInput: document.querySelector('input[name="latitude"]'),
   longitudeInput: document.querySelector('input[name="longitude"]'),
+  paymentRequiredInput: document.querySelector('input[name="paymentRequired"]'),
+  feeInput: document.querySelector('input[name="fee"]'),
   resetButton: document.querySelector("#reset-demo"),
   submitButton: document.querySelector("#submit-listing"),
   pinStatus: document.querySelector("#pin-status"),
@@ -185,6 +191,11 @@ function bindEvents() {
   elements.locationInput.addEventListener("input", () => {
     state.draft.locationTouched = true;
   });
+
+  if (elements.paymentRequiredInput) {
+    elements.paymentRequiredInput.addEventListener("change", syncFeeFieldState);
+    syncFeeFieldState();
+  }
 
   elements.mobileTabButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -292,6 +303,7 @@ function bindEvents() {
       latitude: formData.get("latitude"),
       longitude: formData.get("longitude"),
       hasBidet: formData.get("hasBidet") === "true",
+      hasTissue: formData.get("hasTissue") === "true",
       cleanliness: formData.get("cleanliness"),
       pressureLevel: formData.get("pressureLevel"),
       paymentRequired: formData.get("paymentRequired") === "true",
@@ -306,6 +318,7 @@ function bindEvents() {
         await submitSupabaseListing(newListing);
         elements.form.reset();
         resetContributionDraft();
+        syncFeeFieldState();
         elements.pinStatus.textContent = "Submission sent for review. Thanks for contributing.";
         elements.mapSummary.textContent = "Contribution submitted for review.";
         showToast("Submission sent for review. Thanks for contributing.", "success");
@@ -323,6 +336,7 @@ function bindEvents() {
     persistListings();
     elements.form.reset();
     resetContributionDraft();
+    syncFeeFieldState();
     render();
     showToast("Listing saved to your local demo data.", "success");
   });
@@ -760,6 +774,7 @@ function renderCards(listings) {
 
     const tagRow = fragment.querySelector(".tag-row");
     tagRow.appendChild(buildTag(listing.hasBidet ? "Bidet available" : "No bidet"));
+    tagRow.appendChild(buildTag(listing.hasTissue ? "Tissue available" : "No tissue"));
     tagRow.appendChild(buildTag(listing.paymentRequired ? "Paid entry" : "Free entry", listing.paymentRequired));
     fragment.querySelector(".pressure-row").appendChild(buildPressureBadge(listing.pressureLevel));
 
@@ -1121,7 +1136,7 @@ function setNextSplashLine() {
 async function fetchSupabaseListings() {
   const { data, error } = await supabaseClient
     .from(SUPABASE_TABLES.toilets)
-    .select("name, location_text, latitude, longitude, has_bidet, cleanliness, pressure_level, payment_required, fee, notes");
+    .select("name, location_text, latitude, longitude, has_bidet, has_tissue, cleanliness, pressure_level, payment_required, fee, notes");
 
   if (error) {
     throw new Error("Could not load approved listings from Supabase.");
@@ -1133,6 +1148,7 @@ async function fetchSupabaseListings() {
     latitude: listing.latitude,
     longitude: listing.longitude,
     hasBidet: listing.has_bidet,
+    hasTissue: listing.has_tissue,
     cleanliness: listing.cleanliness,
     pressureLevel: listing.pressure_level,
     paymentRequired: listing.payment_required,
@@ -1150,6 +1166,7 @@ async function submitSupabaseListing(listing) {
       latitude: listing.latitude,
       longitude: listing.longitude,
       has_bidet: listing.hasBidet,
+      has_tissue: listing.hasTissue,
       cleanliness: listing.cleanliness,
       pressure_level: listing.pressureLevel,
       payment_required: listing.paymentRequired,
@@ -1203,6 +1220,7 @@ function buildPopupMarkup(listing) {
       <p>${escapeHtml(listing.location)}</p>
       <div class="popup-meta">
         <span class="tag">${listing.hasBidet ? "Bidet available" : "No bidet"}</span>
+        <span class="tag">${listing.hasTissue ? "Tissue available" : "No tissue"}</span>
         <span class="tag">${feeText}</span>
         <span class="tag">Cleanliness ${listing.cleanliness}/5</span>
         <span class="tag pressure-inline">${escapeHtml(getPressureSummary(listing.pressureLevel))}</span>
@@ -1222,6 +1240,7 @@ function normalizeListing(listing, index) {
     latitude: Number.isFinite(latitude) ? latitude : fallback.latitude,
     longitude: Number.isFinite(longitude) ? longitude : fallback.longitude,
     hasBidet: Boolean(listing.hasBidet),
+    hasTissue: Boolean(listing.hasTissue),
     cleanliness: clampCleanliness(Number(listing.cleanliness)),
     pressureLevel: clampPressure(Number(listing.pressureLevel)),
     paymentRequired: Boolean(listing.paymentRequired),
@@ -1577,6 +1596,19 @@ function waitForContributionFocusReady(callback) {
   }
 
   map.once("moveend", waitForLayout);
+}
+
+function syncFeeFieldState() {
+  if (!elements.feeInput || !elements.paymentRequiredInput) {
+    return;
+  }
+
+  const isPaymentRequired = elements.paymentRequiredInput.checked;
+  elements.feeInput.disabled = !isPaymentRequired;
+
+  if (!isPaymentRequired) {
+    elements.feeInput.value = "0";
+  }
 }
 
 function resetContributionDraft() {

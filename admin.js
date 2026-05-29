@@ -2,8 +2,8 @@ const SUPABASE_TABLES = {
   submissions: "toilet_submissions"
 };
 
-const SUBMISSION_FIELDS_WITH_REVIEW = "id, created_at, name, location_text, latitude, longitude, has_bidet, cleanliness, pressure_level, payment_required, fee, notes, status, reviewed_at";
-const SUBMISSION_FIELDS_BASE = "id, created_at, name, location_text, latitude, longitude, has_bidet, cleanliness, pressure_level, payment_required, fee, notes";
+const SUBMISSION_FIELDS_WITH_REVIEW = "id, created_at, name, location_text, latitude, longitude, has_bidet, has_tissue, cleanliness, pressure_level, payment_required, fee, notes, status, reviewed_at";
+const SUBMISSION_FIELDS_BASE = "id, created_at, name, location_text, latitude, longitude, has_bidet, has_tissue, cleanliness, pressure_level, payment_required, fee, notes";
 const EMBED_DELTA = 0.0045;
 
 const supabaseConfig = window.SITCHECK_CONFIG || {};
@@ -203,6 +203,8 @@ function renderQueue(records) {
     const meta = document.createElement("div");
     meta.className = "queue-meta";
     meta.appendChild(createTag((record.status || "pending").toLowerCase(), (record.status || "pending").toLowerCase()));
+    meta.appendChild(createTag(record.has_bidet ? "Bidet available" : "No bidet"));
+    meta.appendChild(createTag(record.has_tissue ? "Tissue available" : "No tissue"));
     meta.appendChild(createTag(`Cleanliness ${Number(record.cleanliness) || 0}/5`));
     meta.appendChild(createTag(record.payment_required ? `Fee PHP ${Number(record.fee) || 0}` : "Free"));
 
