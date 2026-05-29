@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.6] - 2026-05-29
+
+### Fixed
+- Added and aligned Privacy Policy navigation so users can return to the app without relaunching.
+
+## [1.2.5] - 2026-05-22
+
+### Fixed
+- Improved the About page mobile action buttons so they stack cleanly and remain easy to tap.
+
+## [1.2.4] - 2026-05-21
+
+### Added
+- Added an in-app privacy policy page and About page link for Play Console release requirements.
+
 ## [1.2.3] - 2026-05-21
 
 ### Fixed

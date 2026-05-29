@@ -82,6 +82,7 @@
 
     .button {
       display: inline-flex;
+      flex: 1 1 0;
       align-items: center;
       justify-content: center;
       min-height: 40px;
@@ -119,7 +120,15 @@
       }
 
       .button-row {
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .button {
+        width: 100%;
+        min-height: 46px;
+        padding: 0 16px;
       }
     }
   </style>
@@ -137,7 +146,7 @@
         <br>
         <p>
           <strong>Made by JRAG</strong> -
-          <span class="release-text">release v<span id="app-version">1.2.3</span></span>
+          <span class="release-text">release v<span id="app-version">1.2.6</span></span>
         </p>
       </div>
       <br>

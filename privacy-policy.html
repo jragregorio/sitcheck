@@ -27,6 +27,29 @@
       box-shadow: 0 18px 40px rgba(23, 32, 51, 0.08);
     }
 
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      margin-bottom: 18px;
+      padding: 0 16px;
+      width: fit-content;
+      border: 1px solid #e2d7c4;
+      border-radius: 999px;
+      background: #fff;
+      color: #172033;
+      font-weight: 700;
+      line-height: 1;
+      text-decoration: none;
+    }
+
+    .back-link.bottom {
+      margin-top: 28px;
+      margin-bottom: 0;
+      width: 100%;
+    }
+
     h1,
     h2 {
       line-height: 1.2;
@@ -44,10 +67,25 @@
       color: #5d6472;
       font-size: 0.95rem;
     }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 20px 14px;
+      }
+
+      main {
+        padding: 24px;
+      }
+
+      .back-link {
+        min-height: 40px;
+      }
+    }
   </style>
 </head>
 <body>
   <main>
+    <a class="back-link" href="about.html">Back to About</a>
     <h1>Privacy Policy</h1>
     <p class="updated">Last updated: May 21, 2026</p>
 
@@ -91,6 +129,7 @@
 
     <h2>Contact</h2>
     <p>For privacy questions, contact the developer using the contact email listed on the SitCheck Google Play Store listing.</p>
+    <a class="back-link bottom" href="about.html">Back to About</a>
   </main>
 </body>
 </html>
