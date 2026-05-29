@@ -1,5 +1,6 @@
 const SUPABASE_TABLES = {
-  submissions: "toilet_submissions"
+  submissions: "toilet_submissions",
+  toilets: "toilets"
 };
 
 const SUBMISSION_FIELDS_WITH_REVIEW = "id, created_at, name, location_text, latitude, longitude, has_bidet, has_tissue, cleanliness, pressure_level, payment_required, fee, notes, status, reviewed_at";
@@ -17,7 +18,8 @@ const supabaseClient = supabaseUrl && supabaseAnonKey && window.supabase?.create
 const state = {
   user: null,
   queueFilter: "pending",
-  canModerate: true
+  canModerate: true,
+  editingSubmissionId: null
 };
 
 const elements = {
@@ -179,6 +181,7 @@ async function querySubmissions(fields, allowStatusFilter) {
 
 function renderQueue(records) {
   elements.queueList.innerHTML = "";
+  state.editingSubmissionId = null;
 
   if (!records.length) {
     const empty = document.createElement("div");
@@ -206,6 +209,7 @@ function renderQueue(records) {
     meta.appendChild(createTag(record.has_bidet ? "Bidet available" : "No bidet"));
     meta.appendChild(createTag(record.has_tissue ? "Tissue available" : "No tissue"));
     meta.appendChild(createTag(`Cleanliness ${Number(record.cleanliness) || 0}/5`));
+    meta.appendChild(createTag(`Pressure ${Number(record.pressure_level) || 0}/5`));
     meta.appendChild(createTag(record.payment_required ? `Fee PHP ${Number(record.fee) || 0}` : "Free"));
 
     const notes = document.createElement("p");
@@ -219,6 +223,13 @@ function renderQueue(records) {
 
     const actions = document.createElement("div");
     actions.className = "queue-actions";
+
+    const editButton = document.createElement("button");
+    editButton.className = "button secondary";
+    editButton.type = "button";
+    editButton.textContent = "Edit";
+    editButton.disabled = !state.canModerate;
+    const editPanel = createSubmissionEditPanel(record);
 
     const approveButton = document.createElement("button");
     approveButton.className = "button warn";
@@ -238,10 +249,288 @@ function renderQueue(records) {
       void updateReviewState(record.id, "rejected", approveButton, rejectButton);
     });
 
-    actions.append(approveButton, rejectButton);
-    card.append(title, location, snapshot, meta, notes, submitted, actions);
+    editButton.addEventListener("click", () => {
+      toggleEditPanel(card, editPanel, record.id);
+    });
+
+    actions.append(editButton, approveButton, rejectButton);
+    card.append(title, location, snapshot, meta, notes, submitted, actions, editPanel);
     elements.queueList.appendChild(card);
   });
+}
+
+function createSubmissionEditPanel(record) {
+  const panel = document.createElement("div");
+  panel.className = "queue-edit-panel hidden";
+  panel.dataset.submissionId = record.id;
+
+  const form = document.createElement("form");
+  form.className = "queue-edit-form";
+  form.noValidate = true;
+
+  const toggleStack = document.createElement("div");
+  toggleStack.className = "toggle-stack";
+  toggleStack.append(
+    createToggleRow("Has Bidet?", `edit-bidet-${record.id}`, "hasBidet", Boolean(record.has_bidet)),
+    createToggleRow("Has Tissue?", `edit-tissue-${record.id}`, "hasTissue", Boolean(record.has_tissue)),
+    createToggleRow("Payment required?", `edit-payment-${record.id}`, "paymentRequired", Boolean(record.payment_required))
+  );
+
+  const cleanlinessField = document.createElement("label");
+  cleanlinessField.className = "field";
+  cleanlinessField.innerHTML = `
+    <span>Cleanliness</span>
+    <select name="cleanliness">
+      <option value="5">5 - Very clean</option>
+      <option value="4">4 - Clean</option>
+      <option value="3">3 - Acceptable</option>
+      <option value="2">2 - Needs work</option>
+      <option value="1">1 - Poor</option>
+    </select>
+  `;
+  cleanlinessField.querySelector("select").value = String(clampCleanliness(Number(record.cleanliness)));
+
+  const pressureField = document.createElement("label");
+  pressureField.className = "field";
+  pressureField.innerHTML = `
+    <span>Pressure level</span>
+    <select name="pressureLevel">
+      <option value="1">1 - Polite Drizzle</option>
+      <option value="2">2 - Gentle Splash</option>
+      <option value="3">3 - Steady Spray</option>
+      <option value="4">4 - Power Rinse</option>
+      <option value="5">5 - Firehose Energy</option>
+    </select>
+  `;
+  pressureField.querySelector("select").value = String(clampPressure(Number(record.pressure_level)));
+
+  const feeField = document.createElement("label");
+  feeField.className = "field";
+  feeField.innerHTML = `
+    <span>Fee amount</span>
+    <input name="fee" type="number" min="0" step="1" placeholder="0">
+  `;
+  feeField.querySelector("input").value = String(Math.max(0, Number(record.fee) || 0));
+
+  const notesField = document.createElement("label");
+  notesField.className = "field";
+  notesField.innerHTML = `
+    <span>Notes</span>
+    <textarea name="notes" rows="3" placeholder="Notes about this restroom"></textarea>
+  `;
+  notesField.querySelector("textarea").value = record.notes || "";
+
+  const actions = document.createElement("div");
+  actions.className = "queue-edit-actions";
+
+  const saveButton = document.createElement("button");
+  saveButton.className = "button primary";
+  saveButton.type = "submit";
+  saveButton.textContent = "Save changes";
+
+  const cancelButton = document.createElement("button");
+  cancelButton.className = "button";
+  cancelButton.type = "button";
+  cancelButton.textContent = "Cancel";
+  cancelButton.addEventListener("click", () => {
+    panel.classList.add("hidden");
+    state.editingSubmissionId = null;
+  });
+
+  actions.append(saveButton, cancelButton);
+  form.append(toggleStack, cleanlinessField, pressureField, feeField, notesField, actions);
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void saveSubmissionEdits(record, form, saveButton);
+  });
+
+  bindEditFormInteractions(form);
+  panel.appendChild(form);
+  return panel;
+}
+
+function createToggleRow(labelText, inputId, name, checked) {
+  const row = document.createElement("div");
+  row.className = "toggle-row";
+
+  const label = document.createElement("span");
+  label.className = "toggle-label";
+  label.textContent = labelText;
+
+  const switchLabel = document.createElement("label");
+  switchLabel.className = "toggle-switch toggle-switch-fill";
+  switchLabel.htmlFor = inputId;
+
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.className = "toggle-input";
+  input.id = inputId;
+  input.name = name;
+  input.value = "true";
+  input.checked = checked;
+
+  const track = document.createElement("span");
+  track.className = "toggle-track";
+  track.setAttribute("aria-hidden", "true");
+
+  switchLabel.append(input, track);
+  row.append(label, switchLabel);
+  return row;
+}
+
+function bindEditFormInteractions(form) {
+  const paymentInput = form.querySelector('input[name="paymentRequired"]');
+  const feeInput = form.querySelector('input[name="fee"]');
+
+  if (!paymentInput || !feeInput) {
+    return;
+  }
+
+  const syncFeeField = () => {
+    feeInput.disabled = !paymentInput.checked;
+
+    if (!paymentInput.checked) {
+      feeInput.value = "0";
+    }
+  };
+
+  paymentInput.addEventListener("change", syncFeeField);
+  syncFeeField();
+}
+
+function toggleEditPanel(card, panel, submissionId) {
+  const isOpen = state.editingSubmissionId === submissionId;
+
+  elements.queueList.querySelectorAll(".queue-edit-panel").forEach((entry) => {
+    entry.classList.add("hidden");
+  });
+  state.editingSubmissionId = null;
+
+  if (isOpen) {
+    return;
+  }
+
+  panel.classList.remove("hidden");
+  state.editingSubmissionId = submissionId;
+  card.scrollIntoView({
+    behavior: "smooth",
+    block: "nearest"
+  });
+}
+
+async function saveSubmissionEdits(record, form, saveButton) {
+  if (!supabaseClient || !state.user) {
+    return;
+  }
+
+  saveButton.disabled = true;
+  saveButton.textContent = "Saving...";
+  hideStatus();
+
+  const payload = buildSubmissionUpdatePayload(new FormData(form));
+  const { error } = await supabaseClient
+    .from(SUPABASE_TABLES.submissions)
+    .update(payload)
+    .eq("id", record.id);
+
+  if (error) {
+    showStatus("Could not save edits. Check moderator update permissions on toilet_submissions.", true);
+    saveButton.disabled = false;
+    saveButton.textContent = "Save changes";
+    return;
+  }
+
+  const isApproved = (record.status || "").toLowerCase() === "approved";
+
+  if (isApproved) {
+    try {
+      await syncApprovedListingToToilet(record.id, payload);
+    } catch (syncError) {
+      showStatus(syncError.message, true);
+      saveButton.disabled = false;
+      saveButton.textContent = "Save changes";
+      return;
+    }
+  }
+
+  state.editingSubmissionId = null;
+  showStatus(
+    isApproved ? "Submission and public listing updated." : "Submission updated.",
+    false,
+    true
+  );
+  await loadQueue();
+}
+
+async function syncApprovedListingToToilet(submissionId, listingPayload) {
+  const toiletPayload = {
+    has_bidet: listingPayload.has_bidet,
+    has_tissue: listingPayload.has_tissue,
+    cleanliness: listingPayload.cleanliness,
+    pressure_level: listingPayload.pressure_level,
+    payment_required: listingPayload.payment_required,
+    fee: listingPayload.fee,
+    notes: listingPayload.notes
+  };
+
+  const { data, error } = await supabaseClient
+    .from(SUPABASE_TABLES.toilets)
+    .update(toiletPayload)
+    .eq("source_submission_id", submissionId)
+    .select("id");
+
+  if (error) {
+    throw new Error("Submission saved, but the public listing could not be synced. Check moderator update permissions on toilets.");
+  }
+
+  if (data?.length) {
+    return;
+  }
+
+  const fallback = await supabaseClient
+    .from(SUPABASE_TABLES.toilets)
+    .update(toiletPayload)
+    .eq("source_submission_id", String(submissionId))
+    .select("id");
+
+  if (fallback.error) {
+    throw new Error("Submission saved, but the public listing could not be synced. Check moderator update permissions on toilets.");
+  }
+
+  if (!fallback.data?.length) {
+    throw new Error("Submission saved, but no linked public listing was found to sync.");
+  }
+}
+
+function buildSubmissionUpdatePayload(formData) {
+  const paymentRequired = formData.get("paymentRequired") === "true";
+
+  return {
+    has_bidet: formData.get("hasBidet") === "true",
+    has_tissue: formData.get("hasTissue") === "true",
+    cleanliness: clampCleanliness(Number(formData.get("cleanliness"))),
+    pressure_level: clampPressure(Number(formData.get("pressureLevel"))),
+    payment_required: paymentRequired,
+    fee: paymentRequired ? Math.max(0, Number(formData.get("fee")) || 0) : 0,
+    notes: String(formData.get("notes") || "").trim() || "No notes provided."
+  };
+}
+
+function clampPressure(value) {
+  if (!Number.isFinite(value)) {
+    return 3;
+  }
+
+  return Math.min(5, Math.max(1, Math.round(value)));
+}
+
+function clampCleanliness(value) {
+  if (!Number.isFinite(value)) {
+    return 3;
+  }
+
+  return Math.min(5, Math.max(1, Math.round(value)));
 }
 
 async function updateReviewState(submissionId, status, approveButton, rejectButton) {
@@ -268,8 +557,41 @@ async function updateReviewState(submissionId, status, approveButton, rejectButt
     return;
   }
 
+  if (status === "approved") {
+    const { data: submission, error: fetchError } = await supabaseClient
+      .from(SUPABASE_TABLES.submissions)
+      .select("has_bidet, has_tissue, cleanliness, pressure_level, payment_required, fee, notes")
+      .eq("id", submissionId)
+      .single();
+
+    if (!fetchError && submission) {
+      try {
+        await syncApprovedListingToToilet(submissionId, buildListingPayloadFromRecord(submission));
+      } catch (syncError) {
+        showStatus(`Submission approved, but public listing sync failed: ${syncError.message}`, true);
+        approveButton.disabled = false;
+        rejectButton.disabled = false;
+        return;
+      }
+    }
+  }
+
   showStatus(`Submission marked as ${status}.`, false, true);
   await loadQueue();
+}
+
+function buildListingPayloadFromRecord(record) {
+  const paymentRequired = Boolean(record.payment_required);
+
+  return {
+    has_bidet: Boolean(record.has_bidet),
+    has_tissue: Boolean(record.has_tissue),
+    cleanliness: clampCleanliness(Number(record.cleanliness)),
+    pressure_level: clampPressure(Number(record.pressure_level)),
+    payment_required: paymentRequired,
+    fee: paymentRequired ? Math.max(0, Number(record.fee) || 0) : 0,
+    notes: String(record.notes || "").trim() || "No notes provided."
+  };
 }
 
 function createTag(text, variant = "") {

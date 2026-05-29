@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.11] - 2026-05-29
+
+### Added
+- Moderator inline edit for submission details (bidet, tissue, cleanliness, pressure, payment, notes).
+
+### Fixed
+- Approved submission edits and approvals now sync listing fields to the public `toilets` table so map popups match moderator data (e.g. tissue availability).
+
 ## [1.2.10] - 2026-05-29
 
 ### Changed
