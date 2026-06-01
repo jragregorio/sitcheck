@@ -37,6 +37,22 @@ python -m http.server 8000
 
 Then open `http://localhost:8000`.
 
+## Android development
+
+After you change web files (`index.html`, `app.js`, `styles.css`, and related assets), copy them into the Android app:
+
+```bash
+npm run cap:sync:android
+```
+
+This runs `sync:web` (copies the site into `dist/`) and then `cap sync android` so the Capacitor Android project picks up the latest web build. Use this before running or packaging the app whenever the in-app UI looks stale.
+
+Open the native project in Android Studio (emulator, device, or manual Gradle tasks):
+
+```bash
+npm run cap:open:android
+```
+
 ## Rebuild Android release bundle
 
 From the project root in PowerShell, set Java 17 (required by Gradle) and build the Play Console bundle:
