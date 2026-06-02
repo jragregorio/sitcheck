@@ -1,5 +1,25 @@
 # Changelog
 
+Version format: **MAJOR.MINOR.PATCH** with PATCH **1–9 only**. When PATCH would hit 10, carry to MINOR (e.g. `1.2.11` → `1.3.1`). Use `npm run bump:version` for releases.
+
+## [1.3.5] - 2026-05-30
+
+### Fixed
+- Contribution submit no longer sends invalid `pressure_level: 0` when Has Bidet? is off (uses `null` per Supabase constraint).
+- New submissions explicitly set `status: pending`; clearer Supabase error messages on submit failure.
+
+## [1.3.4] - 2026-05-30
+
+### Changed
+- Adopted carry versioning; display version renumbered from `1.2.13`.
+- Contribute and moderator forms default Has Bidet? and Has Tissue? to off.
+- Pressure level shows only when Has Bidet? is on; fee amount shows only when Payment required? is on.
+
+## [1.2.12] - 2026-05-30
+
+### Fixed
+- Narrowed moderator edit toggle thumb width while keeping full track height for a cleaner switch appearance.
+
 ## [1.2.11] - 2026-05-29
 
 ### Added

@@ -292,6 +292,10 @@ function createSubmissionEditPanel(record) {
 
   const pressureField = document.createElement("label");
   pressureField.className = "field";
+  pressureField.dataset.pressureField = "true";
+  if (!record.has_bidet) {
+    pressureField.classList.add("hidden");
+  }
   pressureField.innerHTML = `
     <span>Pressure level</span>
     <select name="pressureLevel">
@@ -306,6 +310,10 @@ function createSubmissionEditPanel(record) {
 
   const feeField = document.createElement("label");
   feeField.className = "field";
+  feeField.dataset.feeField = "true";
+  if (!record.payment_required) {
+    feeField.classList.add("hidden");
+  }
   feeField.innerHTML = `
     <span>Fee amount</span>
     <input name="fee" type="number" min="0" step="1" placeholder="0">
@@ -380,17 +388,31 @@ function createToggleRow(labelText, inputId, name, checked) {
 }
 
 function bindEditFormInteractions(form) {
+  const bidetInput = form.querySelector('input[name="hasBidet"]');
+  const pressureField = form.querySelector('[data-pressure-field="true"]');
   const paymentInput = form.querySelector('input[name="paymentRequired"]');
+  const feeField = form.querySelector('[data-fee-field="true"]');
   const feeInput = form.querySelector('input[name="fee"]');
 
-  if (!paymentInput || !feeInput) {
+  if (bidetInput && pressureField) {
+    const syncPressureField = () => {
+      pressureField.classList.toggle("hidden", !bidetInput.checked);
+    };
+
+    bidetInput.addEventListener("change", syncPressureField);
+    syncPressureField();
+  }
+
+  if (!paymentInput || !feeInput || !feeField) {
     return;
   }
 
   const syncFeeField = () => {
-    feeInput.disabled = !paymentInput.checked;
+    const isPaymentRequired = paymentInput.checked;
+    feeField.classList.toggle("hidden", !isPaymentRequired);
+    feeInput.disabled = !isPaymentRequired;
 
-    if (!paymentInput.checked) {
+    if (!isPaymentRequired) {
       feeInput.value = "0";
     }
   };
@@ -504,13 +526,14 @@ async function syncApprovedListingToToilet(submissionId, listingPayload) {
 }
 
 function buildSubmissionUpdatePayload(formData) {
+  const hasBidet = formData.get("hasBidet") === "true";
   const paymentRequired = formData.get("paymentRequired") === "true";
 
   return {
-    has_bidet: formData.get("hasBidet") === "true",
+    has_bidet: hasBidet,
     has_tissue: formData.get("hasTissue") === "true",
     cleanliness: clampCleanliness(Number(formData.get("cleanliness"))),
-    pressure_level: clampPressure(Number(formData.get("pressureLevel"))),
+    pressure_level: hasBidet ? clampPressure(Number(formData.get("pressureLevel"))) : null,
     payment_required: paymentRequired,
     fee: paymentRequired ? Math.max(0, Number(formData.get("fee")) || 0) : 0,
     notes: String(formData.get("notes") || "").trim() || "No notes provided."
@@ -581,13 +604,14 @@ async function updateReviewState(submissionId, status, approveButton, rejectButt
 }
 
 function buildListingPayloadFromRecord(record) {
+  const hasBidet = Boolean(record.has_bidet);
   const paymentRequired = Boolean(record.payment_required);
 
   return {
-    has_bidet: Boolean(record.has_bidet),
+    has_bidet: hasBidet,
     has_tissue: Boolean(record.has_tissue),
     cleanliness: clampCleanliness(Number(record.cleanliness)),
-    pressure_level: clampPressure(Number(record.pressure_level)),
+    pressure_level: hasBidet ? clampPressure(Number(record.pressure_level)) : null,
     payment_required: paymentRequired,
     fee: paymentRequired ? Math.max(0, Number(record.fee) || 0) : 0,
     notes: String(record.notes || "").trim() || "No notes provided."

@@ -1,0 +1,35 @@
+---
+description: SitCheck app version numbering (carry at 10, patch 1–9)
+alwaysApply: true
+---
+
+# SitCheck version numbering
+
+Display version format: **MAJOR.MINOR.PATCH** (e.g. `1.3.4`).
+
+## Carry rule (fixed)
+
+Each segment uses **1–9 only**. When a segment would become **10**, reset it to **1** and increment the segment to the left.
+
+Examples:
+
+- `1.2.9` → next is `1.3.1` (not `1.2.10`)
+- `1.2.11` under old numbering → **`1.3.1`** after normalize
+- `1.2.13` → **`1.3.4`**
+- `1.3.9` → next is `1.4.1`
+
+## When bumping a release
+
+1. Run `npm run bump:version` (updates `package.json`, `package-lock.json`, `about.html`, `android/app/build.gradle` `versionName` + `versionCode`).
+2. Add a `CHANGELOG.md` section for the new version.
+3. Run `npm run sync:web` before Android builds.
+
+## Play Store
+
+- **`versionCode`** in `android/app/build.gradle` must **always increase** (monotonic integer). Do not reset it when renumbering display versions.
+- **`versionName`** must match `package.json` / About page.
+
+## Do not
+
+- Use patch or minor values **10+** in `versionName` (e.g. never `1.2.10`).
+- Manually edit only one file; keep all version touchpoints in sync.

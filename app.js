@@ -131,7 +131,10 @@ const elements = {
   locationInput: document.querySelector('input[name="location"]'),
   latitudeInput: document.querySelector('input[name="latitude"]'),
   longitudeInput: document.querySelector('input[name="longitude"]'),
+  hasBidetInput: document.querySelector("#has-bidet-input"),
+  pressureFieldset: document.querySelector("#pressure-fieldset"),
   paymentRequiredInput: document.querySelector('input[name="paymentRequired"]'),
+  feeField: document.querySelector("#fee-field"),
   feeInput: document.querySelector('input[name="fee"]'),
   resetButton: document.querySelector("#reset-demo"),
   submitButton: document.querySelector("#submit-listing"),
@@ -191,6 +194,11 @@ function bindEvents() {
   elements.locationInput.addEventListener("input", () => {
     state.draft.locationTouched = true;
   });
+
+  if (elements.hasBidetInput) {
+    elements.hasBidetInput.addEventListener("change", syncPressureFieldVisibility);
+    syncPressureFieldVisibility();
+  }
 
   if (elements.paymentRequiredInput) {
     elements.paymentRequiredInput.addEventListener("change", syncFeeFieldState);
@@ -305,7 +313,7 @@ function bindEvents() {
       hasBidet: formData.get("hasBidet") === "true",
       hasTissue: formData.get("hasTissue") === "true",
       cleanliness: formData.get("cleanliness"),
-      pressureLevel: formData.get("pressureLevel"),
+      pressureLevel: formData.get("hasBidet") === "true" ? formData.get("pressureLevel") : null,
       paymentRequired: formData.get("paymentRequired") === "true",
       fee: formData.get("fee"),
       notes: formData.get("notes")
@@ -319,6 +327,7 @@ function bindEvents() {
         elements.form.reset();
         resetContributionDraft();
         syncFeeFieldState();
+        syncPressureFieldVisibility();
         elements.pinStatus.textContent = "Submission sent for review. Thanks for contributing.";
         elements.mapSummary.textContent = "Contribution submitted for review.";
         showToast("Submission sent for review. Thanks for contributing.", "success");
@@ -337,6 +346,7 @@ function bindEvents() {
     elements.form.reset();
     resetContributionDraft();
     syncFeeFieldState();
+    syncPressureFieldVisibility();
     render();
     showToast("Listing saved to your local demo data.", "success");
   });
@@ -776,7 +786,9 @@ function renderCards(listings) {
     tagRow.appendChild(buildTag(listing.hasBidet ? "Bidet available" : "No bidet"));
     tagRow.appendChild(buildTag(listing.hasTissue ? "Tissue available" : "No tissue"));
     tagRow.appendChild(buildTag(listing.paymentRequired ? "Paid entry" : "Free entry", listing.paymentRequired));
-    fragment.querySelector(".pressure-row").appendChild(buildPressureBadge(listing.pressureLevel));
+    if (listing.hasBidet && listing.pressureLevel) {
+      fragment.querySelector(".pressure-row").appendChild(buildPressureBadge(listing.pressureLevel));
+    }
 
     card.addEventListener("click", () => {
       focusListingOnMap(listing);
@@ -1168,14 +1180,18 @@ async function submitSupabaseListing(listing) {
       has_bidet: listing.hasBidet,
       has_tissue: listing.hasTissue,
       cleanliness: listing.cleanliness,
-      pressure_level: listing.pressureLevel,
+      pressure_level: listing.hasBidet ? clampPressure(Number(listing.pressureLevel)) : null,
       payment_required: listing.paymentRequired,
-      fee: listing.fee,
-      notes: listing.notes
+      fee: listing.paymentRequired ? Math.max(0, Number(listing.fee) || 0) : 0,
+      notes: listing.notes,
+      status: "pending"
     });
 
   if (error) {
-    throw new Error("Could not submit contribution. Check your Supabase table columns and RLS policies.");
+    console.error("Supabase submission error:", error);
+    throw new Error(
+      error.message || "Could not submit contribution. Check your Supabase table columns and RLS policies."
+    );
   }
 }
 
@@ -1223,7 +1239,7 @@ function buildPopupMarkup(listing) {
         <span class="tag">${listing.hasTissue ? "Tissue available" : "No tissue"}</span>
         <span class="tag">${feeText}</span>
         <span class="tag">Cleanliness ${listing.cleanliness}/5</span>
-        <span class="tag pressure-inline">${escapeHtml(getPressureSummary(listing.pressureLevel))}</span>
+        ${listing.hasBidet && listing.pressureLevel ? `<span class="tag pressure-inline">${escapeHtml(getPressureSummary(listing.pressureLevel))}</span>` : ""}
       </div>
     </div>
   `;
@@ -1242,7 +1258,7 @@ function normalizeListing(listing, index) {
     hasBidet: Boolean(listing.hasBidet),
     hasTissue: Boolean(listing.hasTissue),
     cleanliness: clampCleanliness(Number(listing.cleanliness)),
-    pressureLevel: clampPressure(Number(listing.pressureLevel)),
+    pressureLevel: Boolean(listing.hasBidet) ? clampPressure(Number(listing.pressureLevel)) : null,
     paymentRequired: Boolean(listing.paymentRequired),
     fee: Math.max(0, Number(listing.fee) || 0),
     notes: String(listing.notes || "No additional notes yet.").trim()
@@ -1598,12 +1614,25 @@ function waitForContributionFocusReady(callback) {
   map.once("moveend", waitForLayout);
 }
 
+function syncPressureFieldVisibility() {
+  if (!elements.hasBidetInput || !elements.pressureFieldset) {
+    return;
+  }
+
+  elements.pressureFieldset.hidden = !elements.hasBidetInput.checked;
+}
+
 function syncFeeFieldState() {
   if (!elements.feeInput || !elements.paymentRequiredInput) {
     return;
   }
 
   const isPaymentRequired = elements.paymentRequiredInput.checked;
+
+  if (elements.feeField) {
+    elements.feeField.hidden = !isPaymentRequired;
+  }
+
   elements.feeInput.disabled = !isPaymentRequired;
 
   if (!isPaymentRequired) {

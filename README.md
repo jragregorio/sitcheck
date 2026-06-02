@@ -71,6 +71,18 @@ android/app/build/outputs/bundle/release/app-release.aab
 
 If Gradle reports Java 8, run the `$env:JAVA_HOME` and `$env:Path` lines again in the same terminal before rebuilding.
 
+## Version numbering
+
+Display versions use **MAJOR.MINOR.PATCH** where each segment is **1–9 only**. When PATCH would reach 10, reset PATCH to 1 and increment MINOR (for example `1.2.9` → `1.3.1`, and old `1.2.11` → `1.3.1`).
+
+To bump for a new release:
+
+```bash
+npm run bump:version
+```
+
+Then update `CHANGELOG.md`, run `npm run sync:web`, and build the Android bundle. **`versionCode`** in `android/app/build.gradle` still increases by 1 every release (required by Play Console).
+
 ## Demo features
 
 - responsive landing page
