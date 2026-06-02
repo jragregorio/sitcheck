@@ -8,9 +8,28 @@ const SUPABASE_TABLES = {
 const AUTO_LOCATE_DELAY_MS = 450;
 const RETURN_MAP_VIEW_SESSION_KEY = "sitcheck-return-map-view";
 const SPLASH_SEEN_SESSION_KEY = "sitcheck-splash-seen";
+const TOUR_COMPLETE_STORAGE_KEY = "sitcheck-onboarding-complete";
+const TOUR_STEPS = [
+  {
+    targetSelector: "#map",
+    title: "Explore the map",
+    body: "Blue pins are restrooms nearby. Tap a pin to see bidet, tissue, fees, and cleanliness details."
+  },
+  {
+    targetSelector: '[data-tour-target="listings-tab"]',
+    title: "Browse and filter",
+    body: "Open Listings to scroll nearby restrooms, or Filters to narrow by bidet, payment, and cleanliness."
+  },
+  {
+    targetSelector: '[data-tour-target="add-tab"]',
+    title: "Add a restroom",
+    body: "Know a spot that is missing? Tap Add toilet to place a pin or drag the Orange Pin to the right spot. We will suggest the location details automatically. Then submit it for review."
+  }
+];
 const SPLASH_MIN_DURATION_MS = 5000;
 const SPLASH_FADE_DURATION_MS = 1400;
 const SPLASH_LINE_CYCLE_MS = 2000;
+const HERO_COMPACT_DELAY_MS = 3000;
 const SPLASH_LOADING_LINES = [
   "Calibrating bidet radar...",
   "Scanning for hero restrooms...",
@@ -119,6 +138,7 @@ const elements = {
   bidetCount: document.querySelector("#bidet-count"),
   freeCount: document.querySelector("#free-count"),
   resultsSummary: document.querySelector("#results-summary"),
+  heroPanel: document.querySelector("#hero-panel"),
   mapSummary: document.querySelector("#map-summary"),
   addFormNote: document.querySelector("#add-form-note"),
   cardGrid: document.querySelector("#card-grid"),
@@ -145,6 +165,13 @@ const elements = {
   mobileTabButtons: document.querySelectorAll("[data-mobile-tab-button]"),
   mobilePanels: document.querySelectorAll("[data-mobile-panel]"),
   mobileTargetLinks: document.querySelectorAll("[data-mobile-target]"),
+  tourOverlay: document.querySelector("#app-tour"),
+  tourSpotlight: document.querySelector("#app-tour-spotlight"),
+  tourStepLabel: document.querySelector("#app-tour-step"),
+  tourTitle: document.querySelector("#app-tour-title"),
+  tourBody: document.querySelector("#app-tour-body"),
+  tourSkipButton: document.querySelector("#app-tour-skip"),
+  tourNextButton: document.querySelector("#app-tour-next"),
   overlayLeft: document.querySelector(".overlay-left"),
   overlayRight: document.querySelector(".overlay-right"),
   splashLine: document.querySelector("#app-splash-line"),
@@ -171,6 +198,12 @@ let hasShownLocationEnabledToast = false;
 let splashLineIntervalId = 0;
 let lastSplashLineIndex = -1;
 let pendingReturnMapView = loadReturnMapView();
+let heroCompactTimeoutId = 0;
+const tourState = {
+  active: false,
+  stepIndex: 0,
+  force: false
+};
 
 initializeSplashVisibility();
 initializeSplashLineRotation();
@@ -184,6 +217,11 @@ if (supabaseClient) {
 } else {
   scheduleSplashHide();
   scheduleAutoLocateUser();
+}
+
+if (hasHiddenSplash) {
+  maybeScheduleAppTour();
+  scheduleHeroCompactMode();
 }
 
 function bindEvents() {
@@ -237,6 +275,25 @@ function bindEvents() {
       saveReturnMapView();
     });
   });
+
+  if (elements.tourSkipButton) {
+    elements.tourSkipButton.addEventListener("click", () => {
+      completeAppTour();
+    });
+  }
+
+  if (elements.tourNextButton) {
+    elements.tourNextButton.addEventListener("click", () => {
+      advanceAppTour();
+    });
+  }
+
+  window.addEventListener("resize", handleTourResize);
+  window.addEventListener("resize", handleHeroCompactResize);
+
+  if (elements.heroPanel) {
+    elements.heroPanel.addEventListener("click", handleHeroPanelClick);
+  }
 
   elements.focusPinButton.addEventListener("click", () => {
     if (!map || !contributionMarker) {
@@ -329,7 +386,7 @@ function bindEvents() {
         syncFeeFieldState();
         syncPressureFieldVisibility();
         elements.pinStatus.textContent = "Submission sent for review. Thanks for contributing.";
-        elements.mapSummary.textContent = "Contribution submitted for review.";
+        setHeroSummary("Contribution submitted for review.");
         showToast("Submission sent for review. Thanks for contributing.", "success");
       } catch (error) {
         elements.pinStatus.textContent = error.message || "Could not submit contribution right now.";
@@ -365,7 +422,7 @@ function bindEvents() {
 
 function initMap() {
   if (typeof window.L === "undefined") {
-    elements.mapSummary.textContent = "Map library could not be loaded.";
+    setHeroSummary("Map library could not be loaded.");
     return;
   }
 
@@ -404,6 +461,7 @@ function render() {
   renderMap(visibleListings);
   renderCards(visibleListings);
   renderSummary(visibleListings);
+  refreshHeroSummary(visibleListings);
 }
 
 function renderStats() {
@@ -422,19 +480,16 @@ function renderMap(listings) {
 
   if (state.ui.isLoadingListings) {
     map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-    elements.mapSummary.textContent = "Loading approved listings...";
     return;
   }
 
   if (state.ui.remoteError) {
     map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-    elements.mapSummary.textContent = state.ui.remoteError;
     return;
   }
 
   if (!listings.length) {
     map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-    elements.mapSummary.textContent = "No map pins match the current filters.";
     return;
   }
 
@@ -456,8 +511,6 @@ function renderMap(listings) {
 
   if (bounds.length) {
     if (restoreReturnMapView()) {
-      const suffix = listings.length === 1 ? "pin" : "pins";
-      elements.mapSummary.textContent = `Showing ${listings.length} ${suffix} on the map.`;
       return;
     }
 
@@ -469,9 +522,6 @@ function renderMap(listings) {
   } else {
     map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
   }
-
-  const suffix = listings.length === 1 ? "pin" : "pins";
-  elements.mapSummary.textContent = `Showing ${listings.length} ${suffix} on the map.`;
 }
 
 function saveReturnMapView() {
@@ -544,14 +594,14 @@ function locateUser(options = {}) {
 
   if (!map) {
     if (!silentOnError) {
-      elements.mapSummary.textContent = "Map is still loading.";
+      setHeroSummary("Map is still loading.");
     }
     return;
   }
 
   if (!navigator.geolocation) {
     if (!silentOnError) {
-      elements.mapSummary.textContent = "Current location is not supported by this browser.";
+      setHeroSummary("Current location is not supported by this browser.");
     }
     return;
   }
@@ -577,7 +627,11 @@ function locateUser(options = {}) {
         animate: true,
         duration: 1
       });
-      elements.mapSummary.textContent = "Centered on your current location.";
+      if (!(isMobileViewport() && state.ui.mobileTab)) {
+        setHeroSummary("Centered on your current location.");
+      } else {
+        refreshHeroSummary();
+      }
       setLocateButtonState(false);
       showLocationEnabledToast();
       if (state.sort === "nearest") {
@@ -586,7 +640,7 @@ function locateUser(options = {}) {
     },
     (error) => {
       if (!silentOnError) {
-        elements.mapSummary.textContent = getLocationErrorMessage(error);
+        setHeroSummary(getLocationErrorMessage(error));
       }
       setLocateButtonState(false);
     },
@@ -918,6 +972,124 @@ function renderSummary(listings) {
   elements.resultsSummary.textContent = `Showing ${listings.length} ${suffix} from ${state.listings.length} total.`;
 }
 
+function setHeroSummary(text) {
+  if (elements.mapSummary) {
+    elements.mapSummary.textContent = text;
+  }
+}
+
+function refreshHeroSummary(listings = getVisibleListings()) {
+  if (!elements.mapSummary) {
+    return;
+  }
+
+  if (isMobileViewport() && state.ui.mobileTab === "listings") {
+    if (state.ui.isLoadingListings) {
+      setHeroSummary("Loading listings...");
+      return;
+    }
+
+    if (state.ui.remoteError) {
+      setHeroSummary("Could not load listings.");
+      return;
+    }
+
+    const suffix = listings.length === 1 ? "listing" : "listings";
+    setHeroSummary(`Showing ${listings.length} ${suffix} from ${state.listings.length} total.`);
+    return;
+  }
+
+  if (isMobileViewport() && state.ui.mobileTab === "filters") {
+    if (hasActiveFilters()) {
+      const suffix = listings.length === 1 ? "pin" : "pins";
+      setHeroSummary(`${listings.length} ${suffix} match your filters.`);
+      return;
+    }
+
+    setHeroSummary("Filter by bidet, payment, and cleanliness.");
+    return;
+  }
+
+  if (isMobileViewport() && state.ui.mobileTab === "add") {
+    setHeroSummary("Place or drag the pin.");
+    return;
+  }
+
+  if (state.ui.isLoadingListings) {
+    setHeroSummary("Loading approved listings...");
+    return;
+  }
+
+  if (state.ui.remoteError) {
+    setHeroSummary(state.ui.remoteError);
+    return;
+  }
+
+  if (!listings.length) {
+    setHeroSummary("No map pins match the current filters.");
+    return;
+  }
+
+  const suffix = listings.length === 1 ? "pin" : "pins";
+  setHeroSummary(`Showing ${listings.length} ${suffix} on the map.`);
+}
+
+function clearHeroCompactTimer() {
+  if (!heroCompactTimeoutId) {
+    return;
+  }
+
+  window.clearTimeout(heroCompactTimeoutId);
+  heroCompactTimeoutId = 0;
+}
+
+function scheduleHeroCompactMode() {
+  clearHeroCompactTimer();
+
+  if (!elements.heroPanel || !isMobileViewport()) {
+    elements.heroPanel?.classList.remove("is-compact");
+    return;
+  }
+
+  elements.heroPanel.classList.remove("is-compact");
+
+  heroCompactTimeoutId = window.setTimeout(() => {
+    heroCompactTimeoutId = 0;
+
+    if (!elements.heroPanel || !isMobileViewport()) {
+      return;
+    }
+
+    elements.heroPanel.classList.add("is-compact");
+    refreshHeroSummary();
+  }, HERO_COMPACT_DELAY_MS);
+}
+
+function handleHeroCompactResize() {
+  if (!elements.heroPanel) {
+    return;
+  }
+
+  if (!isMobileViewport()) {
+    clearHeroCompactTimer();
+    elements.heroPanel.classList.remove("is-compact");
+    return;
+  }
+
+  if (!elements.heroPanel.classList.contains("is-compact")) {
+    scheduleHeroCompactMode();
+  }
+}
+
+function handleHeroPanelClick() {
+  if (!elements.heroPanel || !isMobileViewport() || !elements.heroPanel.classList.contains("is-compact")) {
+    return;
+  }
+
+  elements.heroPanel.classList.remove("is-compact");
+  scheduleHeroCompactMode();
+}
+
 function getVisibleListings() {
   return sortListings(getFilteredListings());
 }
@@ -1083,6 +1255,8 @@ function hideSplashOverlay() {
       }
 
       elements.splashOverlay.hidden = true;
+      maybeScheduleAppTour();
+      scheduleHeroCompactMode();
     }, SPLASH_FADE_DURATION_MS + 40);
   }, delayMs);
 }
@@ -1310,6 +1484,7 @@ function setMobileTab(tab) {
   }
 
   updateMobileUI();
+  refreshHeroSummary();
 
   if (state.ui.mobileTab) {
     scrollPanelToTop(state.ui.mobileTab);
@@ -1416,6 +1591,174 @@ function resetScrollTop(element) {
 
 function isMobileViewport() {
   return window.innerWidth <= 860;
+}
+
+function shouldStartAppTour(force = false) {
+  if (!isMobileViewport() || !elements.tourOverlay) {
+    return false;
+  }
+
+  if (force || tourState.force) {
+    return true;
+  }
+
+  try {
+    return window.localStorage.getItem(TOUR_COMPLETE_STORAGE_KEY) !== "1";
+  } catch {
+    return false;
+  }
+}
+
+function maybeScheduleAppTour() {
+  if (tourState.active) {
+    return;
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+
+  if (urlParams.get("tour") === "1") {
+    tourState.force = true;
+    clearTourQueryParam();
+  }
+
+  if (!shouldStartAppTour(tourState.force)) {
+    return;
+  }
+
+  window.setTimeout(() => {
+    if (!shouldStartAppTour(tourState.force)) {
+      return;
+    }
+
+    startAppTour();
+  }, 420);
+}
+
+function clearTourQueryParam() {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("tour");
+    window.history.replaceState({}, "", url);
+  } catch {
+    // Ignore URL API issues and continue tour flow.
+  }
+}
+
+function startAppTour() {
+  if (!elements.tourOverlay || !isMobileViewport()) {
+    return;
+  }
+
+  tourState.active = true;
+  tourState.stepIndex = 0;
+  state.ui.mobileTab = null;
+  updateMobileUI();
+
+  elements.tourOverlay.hidden = false;
+  document.body.classList.add("app-tour-open");
+  renderAppTourStep();
+}
+
+function advanceAppTour() {
+  if (!tourState.active) {
+    return;
+  }
+
+  if (tourState.stepIndex >= TOUR_STEPS.length - 1) {
+    completeAppTour();
+    return;
+  }
+
+  tourState.stepIndex += 1;
+  renderAppTourStep();
+}
+
+function completeAppTour() {
+  if (!tourState.active) {
+    return;
+  }
+
+  tourState.active = false;
+  tourState.stepIndex = 0;
+  tourState.force = false;
+
+  if (elements.tourOverlay) {
+    elements.tourOverlay.hidden = true;
+  }
+
+  document.body.classList.remove("app-tour-open");
+
+  try {
+    window.localStorage.setItem(TOUR_COMPLETE_STORAGE_KEY, "1");
+  } catch {
+    // Ignore storage write issues and continue app flow.
+  }
+}
+
+function renderAppTourStep() {
+  const step = TOUR_STEPS[tourState.stepIndex];
+
+  if (!step || !elements.tourOverlay) {
+    completeAppTour();
+    return;
+  }
+
+  const target = document.querySelector(step.targetSelector);
+
+  if (!target) {
+    completeAppTour();
+    return;
+  }
+
+  if (elements.tourStepLabel) {
+    elements.tourStepLabel.textContent = `Step ${tourState.stepIndex + 1} of ${TOUR_STEPS.length}`;
+  }
+
+  if (elements.tourTitle) {
+    elements.tourTitle.textContent = step.title;
+  }
+
+  if (elements.tourBody) {
+    elements.tourBody.textContent = step.body;
+  }
+
+  if (elements.tourNextButton) {
+    elements.tourNextButton.textContent =
+      tourState.stepIndex >= TOUR_STEPS.length - 1 ? "Got it" : "Next";
+  }
+
+  positionAppTourSpotlight(target);
+}
+
+function positionAppTourSpotlight(target) {
+  if (!elements.tourSpotlight || !target) {
+    return;
+  }
+
+  const rect = target.getBoundingClientRect();
+  const padding = target.matches("[data-tour-target='add-tab']") ? 4 : 8;
+  const top = Math.max(8, rect.top - padding);
+  const left = Math.max(8, rect.left - padding);
+  const width = Math.min(window.innerWidth - left - 8, rect.width + padding * 2);
+  const height = Math.min(window.innerHeight - top - 8, rect.height + padding * 2);
+
+  elements.tourSpotlight.style.top = `${top}px`;
+  elements.tourSpotlight.style.left = `${left}px`;
+  elements.tourSpotlight.style.width = `${width}px`;
+  elements.tourSpotlight.style.height = `${height}px`;
+}
+
+function handleTourResize() {
+  if (!tourState.active) {
+    return;
+  }
+
+  if (!isMobileViewport()) {
+    completeAppTour();
+    return;
+  }
+
+  renderAppTourStep();
 }
 
 function isUsingSupabase() {

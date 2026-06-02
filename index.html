@@ -33,7 +33,7 @@
   <div id="map" class="map-canvas" aria-label="Map of toilet locations"></div>
 
   <div class="app-overlay">
-    <header class="floating-panel hero-panel">
+    <header class="floating-panel hero-panel" id="hero-panel">
       <div class="hero-copy">
         <p class="eyebrow">SitCheck</p>
         <h1>Find the right toilet before you need it.</h1>
@@ -48,8 +48,7 @@
         <p id="map-summary" class="hero-summary">Loading map...</p>
         <div class="hero-actions">
           <a class="button primary" href="#toilet-list" data-mobile-target="listings">Open listings</a>
-          <a class="button secondary" href="#add-form" data-mobile-target="add">Contribute</a>
-          <a class="button secondary" href="admin.html" aria-label="Open moderator login page">Admin</a>
+          <a class="button secondary" href="#add-form" data-mobile-target="add">Add toilet</a>
         </div>
       </div>
     </header>
@@ -315,18 +314,31 @@
     <div class="mobile-sheet-nav" aria-label="Mobile panel navigation">
       <div class="mobile-sheet-handle" aria-hidden="true"></div>
       <nav class="mobile-tab-nav">
-        <button type="button" class="mobile-tab-button" data-mobile-tab-button="listings">Listings</button>
-        <button type="button" class="mobile-tab-button" data-mobile-tab-button="filters">Filters</button>
-        <button type="button" class="mobile-tab-button" data-mobile-tab-button="add">Add</button>
+        <button type="button" class="mobile-tab-button" data-mobile-tab-button="listings" data-tour-target="listings-tab">Listings</button>
+        <button type="button" class="mobile-tab-button" data-mobile-tab-button="filters" data-tour-target="filters-tab">Filters</button>
+        <button type="button" class="mobile-tab-button mobile-tab-button-cta" data-mobile-tab-button="add" data-tour-target="add-tab">
+          <span class="mobile-tab-cta-icon" aria-hidden="true">+</span>
+          <span>Add toilet</span>
+        </button>
       </nav>
+    </div>
+
+    <div id="app-tour" class="app-tour" hidden>
+      <div id="app-tour-spotlight" class="app-tour-spotlight" aria-hidden="true"></div>
+      <section class="app-tour-card" role="dialog" aria-modal="true" aria-labelledby="app-tour-title">
+        <p id="app-tour-step" class="app-tour-step">Step 1 of 3</p>
+        <h2 id="app-tour-title" class="app-tour-title">Explore the map</h2>
+        <p id="app-tour-body" class="app-tour-body">Blue pins are restrooms. Tap a pin to see details.</p>
+        <div class="app-tour-actions">
+          <button id="app-tour-skip" type="button" class="button secondary app-tour-skip">Skip</button>
+          <button id="app-tour-next" type="button" class="button primary app-tour-next">Next</button>
+        </div>
+      </section>
     </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
     <a class="mobile-about-button" href="about.html" aria-label="Open about page" title="About SitCheck">
       <span aria-hidden="true">☕</span>
-    </a>
-    <a class="mobile-moderator-button" href="admin.html" aria-label="Open moderator login page" title="Moderator login">
-      <span aria-hidden="true">🔐</span>
     </a>
   </div>
 

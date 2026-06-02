@@ -188,10 +188,6 @@ body {
   display: none;
 }
 
-.mobile-moderator-button {
-  display: none;
-}
-
 .mobile-about-button {
   display: none;
 }
@@ -1272,34 +1268,6 @@ h2 {
     display: none;
   }
 
-  .mobile-moderator-button {
-    display: inline-flex;
-    position: fixed;
-    top: 182px;
-    left: 12px;
-    z-index: 33;
-    width: 56px;
-    height: 56px;
-    padding: 0;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--line);
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.96);
-    color: var(--text);
-    font-weight: 700;
-    font-size: 1.35rem;
-    line-height: 1;
-    text-decoration: none;
-    box-shadow: 0 12px 28px rgba(19, 34, 56, 0.18);
-    backdrop-filter: blur(10px);
-    pointer-events: auto;
-  }
-
-  .mobile-moderator-button:hover {
-    background: #fff;
-  }
-
   .mobile-about-button {
     display: inline-flex;
     position: fixed;
@@ -1336,6 +1304,47 @@ h2 {
 
   .hero-summary {
     font-size: 0.95rem;
+    line-height: 1.35;
+  }
+
+  .hero-panel.is-compact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+  }
+
+  .hero-panel.is-compact .hero-copy {
+    flex: 0 0 auto;
+  }
+
+  .hero-panel.is-compact .hero-copy h1,
+  .hero-panel.is-compact .hero-text {
+    display: none;
+  }
+
+  .hero-panel.is-compact .hero-side {
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .hero-panel.is-compact .hero-summary {
+    margin: 0;
+    text-align: right;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hero-panel.is-compact .eyebrow {
+    margin-bottom: 0;
   }
 
   .stats-panel {
@@ -1400,7 +1409,7 @@ h2 {
 
   .mobile-tab-nav {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr);
     gap: 10px;
     padding: 10px;
     background: rgba(255, 255, 255, 0.9);
@@ -1421,10 +1430,118 @@ h2 {
     cursor: pointer;
   }
 
+  .mobile-tab-button-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: linear-gradient(180deg, #3a6dff 0%, var(--primary) 100%);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 10px 22px rgba(36, 87, 245, 0.34);
+  }
+
+  .mobile-tab-cta-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.22);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
   .mobile-tab-button.is-active {
     background: var(--primary);
     border-color: transparent;
     color: #fff;
+  }
+
+  .mobile-tab-button-cta.is-active {
+    background: linear-gradient(180deg, #2f63f2 0%, #1d49d8 100%);
+    box-shadow: 0 8px 18px rgba(29, 73, 216, 0.4);
+  }
+
+  .app-tour {
+    position: fixed;
+    inset: 0;
+    z-index: 48;
+    pointer-events: none;
+  }
+
+  .app-tour:not([hidden]) {
+    pointer-events: auto;
+  }
+
+  .app-tour-spotlight {
+    position: fixed;
+    z-index: 49;
+    border: 2px solid rgba(255, 255, 255, 0.95);
+    border-radius: 18px;
+    box-shadow: 0 0 0 9999px rgba(19, 34, 56, 0.62);
+    pointer-events: none;
+    transition:
+      top 220ms ease,
+      left 220ms ease,
+      width 220ms ease,
+      height 220ms ease;
+  }
+
+  .app-tour-card {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 96px;
+    z-index: 50;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 18px 40px rgba(19, 34, 56, 0.2);
+    pointer-events: auto;
+  }
+
+  .app-tour-step {
+    margin: 0 0 6px;
+    color: var(--primary);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .app-tour-title {
+    margin: 0 0 8px;
+    font-size: 1.15rem;
+  }
+
+  .app-tour-body {
+    margin: 0 0 14px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .app-tour-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .app-tour-skip,
+  .app-tour-next {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  body.app-tour-open {
+    overflow: hidden;
+  }
+
+  body.app-tour-open .mobile-about-button {
+    opacity: 0;
+    pointer-events: none;
   }
 
   .leaflet-top.leaflet-right .leaflet-control-map-stack {

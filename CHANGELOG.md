@@ -2,6 +2,21 @@
 
 Version format: **MAJOR.MINOR.PATCH** with PATCH **1–9 only**. When PATCH would hit 10, carry to MINOR (e.g. `1.2.11` → `1.3.1`). Use `npm run bump:version` for releases.
 
+## [1.3.7] - 2026-06-02
+
+### Changed
+- Mobile hero panel auto-compacts after 3 seconds and shows a compact SITCHECK + status layout (tap to expand).
+
+## [1.3.6] - 2026-06-02
+
+### Added
+- Mobile onboarding tour (map, listings/filters, Add toilet) with replay from About.
+- Prominent **Add toilet** tab styling for easier contributions.
+
+### Changed
+- Moderator login moved from the map to **About → Moderator**.
+- Removed duplicate **Back to About** link at the bottom of the privacy policy.
+
 ## [1.3.5] - 2026-05-30
 
 ### Fixed
