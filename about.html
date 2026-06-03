@@ -107,6 +107,55 @@
       color: var(--muted);
     }
 
+    .settings-card h2 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+      color: var(--text);
+    }
+
+    .settings-card p {
+      margin: 0 0 14px;
+    }
+
+    .setting-row {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 14px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .setting-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .setting-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .setting-toggle input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+    }
+
+    .setting-row select {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
+
     @media (max-width: 860px) {
       body {
         display: grid;
@@ -146,7 +195,7 @@
         <br>
         <p>
           <strong>Made by JRAG</strong> -
-          <span class="release-text">release v<span id="app-version">1.3.7</span></span>
+          <span class="release-text">release v<span id="app-version">1.4.4</span></span>
         </p>
       </div>
       <br>
@@ -158,7 +207,61 @@
         <a class="button" href="index.html">Back to Map</a>
       </div>
     </section>
+
+    <section class="card settings-card">
+      <h2>Nearby suggestions</h2>
+      <p>Control when SitCheck suggests adding a listing because none are close by.</p>
+      <label class="setting-toggle">
+        <input id="area-nudge-enabled" type="checkbox" checked>
+        <span>Suggest adding a listing when none are nearby</span>
+      </label>
+      <label class="setting-row">
+        <span>Search radius</span>
+        <select id="area-nudge-radius" aria-label="Nearby listing search radius">
+          <option value="0.2">200 meters</option>
+          <option value="0.5">500 meters</option>
+        </select>
+      </label>
+    </section>
   </main>
 
+  <script>
+    const AREA_NUDGE_SETTINGS_STORAGE_KEY = "sitcheck-area-nudge-settings";
+    const DEFAULT_AREA_NUDGE_SETTINGS = {
+      enabled: true,
+      radiusKm: 0.2
+    };
+
+    const enabledInput = document.querySelector("#area-nudge-enabled");
+    const radiusSelect = document.querySelector("#area-nudge-radius");
+
+    function loadAreaNudgeSettingsForm() {
+      try {
+        const raw = window.localStorage.getItem(AREA_NUDGE_SETTINGS_STORAGE_KEY);
+        const settings = raw
+          ? { ...DEFAULT_AREA_NUDGE_SETTINGS, ...JSON.parse(raw) }
+          : { ...DEFAULT_AREA_NUDGE_SETTINGS };
+
+        enabledInput.checked = settings.enabled !== false;
+        radiusSelect.value = Number(settings.radiusKm) === 0.5 ? "0.5" : "0.2";
+      } catch {
+        enabledInput.checked = true;
+        radiusSelect.value = "0.2";
+      }
+    }
+
+    function saveAreaNudgeSettingsFromForm() {
+      const settings = {
+        enabled: enabledInput.checked,
+        radiusKm: radiusSelect.value === "0.5" ? 0.5 : 0.2
+      };
+
+      window.localStorage.setItem(AREA_NUDGE_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    }
+
+    enabledInput.addEventListener("change", saveAreaNudgeSettingsFromForm);
+    radiusSelect.addEventListener("change", saveAreaNudgeSettingsFromForm);
+    loadAreaNudgeSettingsForm();
+  </script>
 </body>
 </html>

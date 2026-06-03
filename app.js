@@ -6,6 +6,7 @@ const SUPABASE_TABLES = {
   submissions: "toilet_submissions"
 };
 const AUTO_LOCATE_DELAY_MS = 450;
+const NEAREST_SORT_LOCATION_DEBOUNCE_MS = 2000;
 const RETURN_MAP_VIEW_SESSION_KEY = "sitcheck-return-map-view";
 const SPLASH_SEEN_SESSION_KEY = "sitcheck-splash-seen";
 const TOUR_COMPLETE_STORAGE_KEY = "sitcheck-onboarding-complete";
@@ -30,6 +31,19 @@ const SPLASH_MIN_DURATION_MS = 5000;
 const SPLASH_FADE_DURATION_MS = 1400;
 const SPLASH_LINE_CYCLE_MS = 2000;
 const HERO_COMPACT_DELAY_MS = 3000;
+const NEARBY_LISTING_RADIUS_KM_DEFAULT = 0.2;
+const AREA_NUDGE_SETTINGS_STORAGE_KEY = "sitcheck-area-nudge-settings";
+const AREA_NUDGE_CHECK_INTERVAL_MS = 30000;
+const AREA_NUDGE_MIN_MOVE_KM = 0.05;
+const AREA_NUDGE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const AREA_NUDGE_COOLDOWN_STORAGE_KEY = "sitcheck-area-nudge-cooldown";
+const AREA_NUDGE_STATIONARY_MS = 30000;
+const AREA_NUDGE_STATIONARY_MAX_MOVE_KM = 0.03;
+const AREA_NUDGE_MAP_ACTIVE_MS = 12000;
+const DEFAULT_AREA_NUDGE_SETTINGS = {
+  enabled: true,
+  radiusKm: NEARBY_LISTING_RADIUS_KM_DEFAULT
+};
 const SPLASH_LOADING_LINES = [
   "Calibrating bidet radar...",
   "Scanning for hero restrooms...",
@@ -140,6 +154,10 @@ const elements = {
   resultsSummary: document.querySelector("#results-summary"),
   heroPanel: document.querySelector("#hero-panel"),
   mapSummary: document.querySelector("#map-summary"),
+  areaNudgeChip: document.querySelector("#area-nudge-chip"),
+  areaNudgeChipText: document.querySelector(".area-nudge-chip-text"),
+  areaNudgeChipDismiss: document.querySelector(".area-nudge-chip-dismiss"),
+  areaNudgeChipAdd: document.querySelector(".area-nudge-chip-add"),
   addFormNote: document.querySelector("#add-form-note"),
   cardGrid: document.querySelector("#card-grid"),
   splashOverlay: document.querySelector("#app-splash"),
@@ -192,6 +210,8 @@ let contributionMarkerVisible = false;
 let isLocatingUser = false;
 let toastTimeoutId = 0;
 let userLocation = null;
+let userLocationWatchId = null;
+let nearestSortRenderTimeoutId = 0;
 let hasHiddenSplash = false;
 let hasAttemptedAutoLocate = false;
 let hasShownLocationEnabledToast = false;
@@ -199,6 +219,16 @@ let splashLineIntervalId = 0;
 let lastSplashLineIndex = -1;
 let pendingReturnMapView = loadReturnMapView();
 let heroCompactTimeoutId = 0;
+let areaNudgeCheckTimeoutId = 0;
+let areaNudgeVisible = false;
+let userLocationFixCount = 0;
+let lastAreaNudgeCheckAtMs = 0;
+let lastAreaNudgeCheckLatitude = null;
+let lastAreaNudgeCheckLongitude = null;
+let mapViewActiveSinceMs = 0;
+let stationarySinceMs = 0;
+let stationaryAnchorLatitude = null;
+let stationaryAnchorLongitude = null;
 const tourState = {
   active: false,
   stepIndex: 0,
@@ -222,9 +252,22 @@ if (supabaseClient) {
 if (hasHiddenSplash) {
   maybeScheduleAppTour();
   scheduleHeroCompactMode();
+  syncAreaNudgeMapViewState();
 }
 
 function bindEvents() {
+  window.addEventListener("pagehide", stopUserLocationWatch);
+  window.addEventListener("pageshow", () => {
+    syncAreaNudgeChipMessage();
+    syncAreaNudgeMapViewState();
+
+    if (!isAreaNudgeEnabled()) {
+      dismissAreaNudgeIfVisible();
+    }
+
+    queueAreaNudgeEvaluation();
+  });
+
   elements.nameInput.addEventListener("input", () => {
     state.draft.nameTouched = true;
   });
@@ -295,14 +338,25 @@ function bindEvents() {
     elements.heroPanel.addEventListener("click", handleHeroPanelClick);
   }
 
+  if (elements.areaNudgeChipDismiss) {
+    elements.areaNudgeChipDismiss.addEventListener("click", () => {
+      hideAreaNudge();
+    });
+  }
+
+  if (elements.areaNudgeChipAdd) {
+    elements.areaNudgeChipAdd.addEventListener("click", () => {
+      openContributeFromAreaNudge();
+    });
+  }
+
   elements.focusPinButton.addEventListener("click", () => {
     if (!map || !contributionMarker) {
       return;
     }
 
     if (isMobileViewport() && state.ui.mobileTab !== "add") {
-      state.ui.mobileTab = "add";
-      updateMobileUI();
+      setMobileTab("add");
     }
 
     focusContributionPin();
@@ -388,6 +442,7 @@ function bindEvents() {
         elements.pinStatus.textContent = "Submission sent for review. Thanks for contributing.";
         setHeroSummary("Contribution submitted for review.");
         showToast("Submission sent for review. Thanks for contributing.", "success");
+        closeContributePanel();
       } catch (error) {
         elements.pinStatus.textContent = error.message || "Could not submit contribution right now.";
         showToast(error.message || "Could not submit contribution right now.", "error");
@@ -606,37 +661,27 @@ function locateUser(options = {}) {
     return;
   }
 
+  if (userLocationWatchId !== null && hasValidUserLocation()) {
+    map.flyTo([userLocation.latitude, userLocation.longitude], Math.max(map.getZoom(), 15), {
+      animate: true,
+      duration: 1
+    });
+    if (!silentOnError) {
+      setHeroSummary("Centered on your current location.");
+    }
+    return;
+  }
+
   setLocateButtonState(true);
   if (!silentOnError) {
     showToast("Fetching your location...", "success");
   }
 
   navigator.geolocation.getCurrentPosition(
-    ({ coords }) => {
-      const latitude = coords.latitude;
-      const longitude = coords.longitude;
-      const accuracy = coords.accuracy;
-
-      renderUserLocation(latitude, longitude, accuracy);
-      userLocation = {
-        latitude,
-        longitude
-      };
-      updateLocateButtonActiveState();
-      map.flyTo([latitude, longitude], Math.max(map.getZoom(), 15), {
-        animate: true,
-        duration: 1
-      });
-      if (!(isMobileViewport() && state.ui.mobileTab)) {
-        setHeroSummary("Centered on your current location.");
-      } else {
-        refreshHeroSummary();
-      }
+    (position) => {
+      applyUserLocationFix(position, { silentOnError, recenter: true });
+      startUserLocationWatch({ silentOnError });
       setLocateButtonState(false);
-      showLocationEnabledToast();
-      if (state.sort === "nearest") {
-        render();
-      }
     },
     (error) => {
       if (!silentOnError) {
@@ -650,6 +695,403 @@ function locateUser(options = {}) {
       maximumAge: 60000
     }
   );
+}
+
+function startUserLocationWatch(options = {}) {
+  const { silentOnError = false } = options;
+
+  if (!navigator.geolocation || userLocationWatchId !== null) {
+    return;
+  }
+
+  userLocationWatchId = navigator.geolocation.watchPosition(
+    (position) => {
+      applyUserLocationFix(position, { silentOnError });
+      setLocateButtonState(false);
+    },
+    () => {
+      setLocateButtonState(false);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 5000
+    }
+  );
+}
+
+function stopUserLocationWatch() {
+  if (userLocationWatchId === null) {
+    return;
+  }
+
+  navigator.geolocation.clearWatch(userLocationWatchId);
+  userLocationWatchId = null;
+  window.clearTimeout(nearestSortRenderTimeoutId);
+  nearestSortRenderTimeoutId = 0;
+}
+
+function applyUserLocationFix(position, options = {}) {
+  const { silentOnError = false, recenter = false } = options;
+  const { latitude, longitude, accuracy } = position.coords;
+
+  renderUserLocation(latitude, longitude, accuracy);
+  userLocation = {
+    latitude,
+    longitude
+  };
+  updateLocateButtonActiveState();
+
+  if (recenter && map) {
+    map.flyTo([latitude, longitude], Math.max(map.getZoom(), 15), {
+      animate: true,
+      duration: 1
+    });
+    if (!(isMobileViewport() && state.ui.mobileTab)) {
+      setHeroSummary("Centered on your current location.");
+    } else {
+      refreshHeroSummary();
+    }
+    if (!silentOnError) {
+      showLocationEnabledToast();
+    }
+  }
+
+  scheduleNearestSortRender();
+  onUserLocationUpdated();
+}
+
+function scheduleNearestSortRender() {
+  if (state.sort !== "nearest") {
+    return;
+  }
+
+  window.clearTimeout(nearestSortRenderTimeoutId);
+  nearestSortRenderTimeoutId = window.setTimeout(() => {
+    nearestSortRenderTimeoutId = 0;
+    render();
+  }, NEAREST_SORT_LOCATION_DEBOUNCE_MS);
+}
+
+function onUserLocationUpdated() {
+  if (!hasValidUserLocation()) {
+    return;
+  }
+
+  updateStationaryAnchor(userLocation.latitude, userLocation.longitude);
+  userLocationFixCount += 1;
+  queueAreaNudgeEvaluation();
+}
+
+function loadAreaNudgeSettings() {
+  try {
+    const raw = window.localStorage.getItem(AREA_NUDGE_SETTINGS_STORAGE_KEY);
+    if (!raw) {
+      return { ...DEFAULT_AREA_NUDGE_SETTINGS };
+    }
+
+    const parsed = JSON.parse(raw);
+    const radiusKm = Number(parsed.radiusKm);
+
+    return {
+      enabled: parsed.enabled !== false,
+      radiusKm: radiusKm === 0.5 ? 0.5 : NEARBY_LISTING_RADIUS_KM_DEFAULT
+    };
+  } catch {
+    return { ...DEFAULT_AREA_NUDGE_SETTINGS };
+  }
+}
+
+function isAreaNudgeEnabled() {
+  return loadAreaNudgeSettings().enabled;
+}
+
+function getAreaNudgeRadiusKm() {
+  return loadAreaNudgeSettings().radiusKm;
+}
+
+function getAreaNudgeRadiusMeters() {
+  return Math.round(getAreaNudgeRadiusKm() * 1000);
+}
+
+function refreshMapViewActiveTimer() {
+  if (!isMapViewActiveForAreaNudge()) {
+    return;
+  }
+
+  if (!mapViewActiveSinceMs) {
+    mapViewActiveSinceMs = Date.now();
+  }
+}
+
+function resetMapViewActiveTimer() {
+  mapViewActiveSinceMs = 0;
+}
+
+function isMapViewActiveForAreaNudge() {
+  if (isMobileViewport()) {
+    return !state.ui.mobileTab;
+  }
+
+  return state.ui.desktopPanel !== "add";
+}
+
+function updateStationaryAnchor(latitude, longitude) {
+  const now = Date.now();
+  const movedKm = stationaryAnchorLatitude === null
+    ? Number.POSITIVE_INFINITY
+    : getDistanceBetweenCoordinates(
+      stationaryAnchorLatitude,
+      stationaryAnchorLongitude,
+      latitude,
+      longitude
+    );
+
+  if (movedKm > AREA_NUDGE_STATIONARY_MAX_MOVE_KM) {
+    stationaryAnchorLatitude = latitude;
+    stationaryAnchorLongitude = longitude;
+    stationarySinceMs = now;
+  }
+}
+
+function meetsAreaNudgeTimingRules() {
+  if (!mapViewActiveSinceMs || !stationarySinceMs) {
+    return false;
+  }
+
+  const now = Date.now();
+  return now - mapViewActiveSinceMs >= AREA_NUDGE_MAP_ACTIVE_MS &&
+    now - stationarySinceMs >= AREA_NUDGE_STATIONARY_MS;
+}
+
+function queueAreaNudgeEvaluation() {
+  if (!hasValidUserLocation() || userLocationFixCount < 2) {
+    return;
+  }
+
+  window.clearTimeout(areaNudgeCheckTimeoutId);
+  areaNudgeCheckTimeoutId = window.setTimeout(() => {
+    areaNudgeCheckTimeoutId = 0;
+    maybeShowAreaNudge();
+  }, 400);
+}
+
+function maybeShowAreaNudge() {
+  if (!isAreaNudgeEnabled() || !canEvaluateAreaNudge() || areaNudgeVisible) {
+    return;
+  }
+
+  if (!meetsAreaNudgeTimingRules()) {
+    return;
+  }
+
+  const { latitude, longitude } = userLocation;
+  const now = Date.now();
+  const movedKm = lastAreaNudgeCheckLatitude === null
+    ? Number.POSITIVE_INFINITY
+    : getDistanceBetweenCoordinates(
+      lastAreaNudgeCheckLatitude,
+      lastAreaNudgeCheckLongitude,
+      latitude,
+      longitude
+    );
+  const elapsedMs = now - lastAreaNudgeCheckAtMs;
+
+  if (
+    lastAreaNudgeCheckAtMs > 0 &&
+    movedKm < AREA_NUDGE_MIN_MOVE_KM &&
+    elapsedMs < AREA_NUDGE_CHECK_INTERVAL_MS
+  ) {
+    return;
+  }
+
+  lastAreaNudgeCheckAtMs = now;
+  lastAreaNudgeCheckLatitude = latitude;
+  lastAreaNudgeCheckLongitude = longitude;
+
+  if (isAreaNudgeCooldownActive(latitude, longitude)) {
+    return;
+  }
+
+  const radiusKm = getAreaNudgeRadiusKm();
+  const nearestDistanceKm = getNearestListingDistanceKm();
+  if (nearestDistanceKm <= radiusKm) {
+    return;
+  }
+
+  showAreaNudge(latitude, longitude);
+}
+
+function canEvaluateAreaNudge() {
+  if (!isAreaNudgeEnabled() || !hasValidUserLocation() || state.ui.isLoadingListings || areaNudgeVisible) {
+    return false;
+  }
+
+  if (!hasHiddenSplash || elements.splashOverlay?.hidden === false) {
+    return false;
+  }
+
+  if (tourState.active || elements.tourOverlay?.hidden === false) {
+    return false;
+  }
+
+  if (isMobileViewport()) {
+    if (state.ui.mobileTab) {
+      return false;
+    }
+
+    if (elements.heroPanel && !elements.heroPanel.classList.contains("is-compact")) {
+      return false;
+    }
+  } else if (state.ui.desktopPanel === "add") {
+    return false;
+  }
+
+  if (!mapViewActiveSinceMs) {
+    return false;
+  }
+
+  return true;
+}
+
+function getNearestListingDistanceKm() {
+  if (!hasValidUserLocation()) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  if (!state.listings.length) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  let nearestDistanceKm = Number.POSITIVE_INFINITY;
+
+  state.listings.forEach((listing) => {
+    const distanceKm = getDistanceFromUser(listing);
+    if (distanceKm < nearestDistanceKm) {
+      nearestDistanceKm = distanceKm;
+    }
+  });
+
+  return nearestDistanceKm;
+}
+
+function getAreaNudgeGridKey(latitude, longitude) {
+  return `${latitude.toFixed(3)}:${longitude.toFixed(3)}`;
+}
+
+function readAreaNudgeCooldownMap() {
+  try {
+    const raw = window.localStorage.getItem(AREA_NUDGE_COOLDOWN_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function isAreaNudgeCooldownActive(latitude, longitude) {
+  const cooldownMap = readAreaNudgeCooldownMap();
+  const shownAt = cooldownMap[getAreaNudgeGridKey(latitude, longitude)];
+
+  return typeof shownAt === "number" && Date.now() - shownAt < AREA_NUDGE_COOLDOWN_MS;
+}
+
+function markAreaNudgeShown(latitude, longitude) {
+  try {
+    const cooldownMap = readAreaNudgeCooldownMap();
+    const now = Date.now();
+    const nextMap = {};
+
+    Object.entries(cooldownMap).forEach(([key, value]) => {
+      if (typeof value === "number" && now - value < AREA_NUDGE_COOLDOWN_MS) {
+        nextMap[key] = value;
+      }
+    });
+
+    nextMap[getAreaNudgeGridKey(latitude, longitude)] = now;
+    window.localStorage.setItem(AREA_NUDGE_COOLDOWN_STORAGE_KEY, JSON.stringify(nextMap));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function syncAreaNudgeChipMessage() {
+  if (!elements.areaNudgeChipText) {
+    return;
+  }
+
+  const radiusM = getAreaNudgeRadiusMeters();
+  elements.areaNudgeChipText.textContent =
+    `No listings within ${radiusM} m. Know a spot? Add one to help others find the right toilet!`;
+}
+
+function showAreaNudge(latitude, longitude) {
+  if (!elements.areaNudgeChip || areaNudgeVisible) {
+    return;
+  }
+
+  areaNudgeVisible = true;
+  syncAreaNudgeChipMessage();
+
+  if (isMobileViewport()) {
+    clearHeroCompactTimer();
+    elements.heroPanel?.classList.add("is-compact");
+    refreshHeroSummary();
+  }
+
+  elements.areaNudgeChip.hidden = false;
+  elements.areaNudgeChip.classList.add("is-visible");
+}
+
+function hideAreaNudge(options = {}) {
+  const { recordCooldown = true } = options;
+
+  if (!elements.areaNudgeChip) {
+    return;
+  }
+
+  const wasVisible = areaNudgeVisible;
+  areaNudgeVisible = false;
+  elements.areaNudgeChip.classList.remove("is-visible");
+  elements.areaNudgeChip.hidden = true;
+
+  if (wasVisible && recordCooldown && hasValidUserLocation()) {
+    markAreaNudgeShown(userLocation.latitude, userLocation.longitude);
+  }
+
+  if (isMobileViewport()) {
+    ensureHeroCompactMode();
+  }
+}
+
+function openContributeFromAreaNudge() {
+  hideAreaNudge();
+
+  if (isMobileViewport()) {
+    setMobileTab("add");
+    return;
+  }
+
+  setDesktopPanel("add");
+}
+
+function dismissAreaNudgeIfVisible() {
+  if (areaNudgeVisible) {
+    hideAreaNudge({ recordCooldown: false });
+  }
+}
+
+function syncAreaNudgeMapViewState() {
+  if (isMapViewActiveForAreaNudge()) {
+    refreshMapViewActiveTimer();
+    return;
+  }
+
+  resetMapViewActiveTimer();
 }
 
 function renderUserLocation(latitude, longitude, accuracy = 50) {
@@ -743,7 +1185,7 @@ function setSubmitButtonState(isSubmitting) {
     return;
   }
 
-  elements.submitButton.textContent = isUsingSupabase() ? "Submit for review" : "Save listing";
+  elements.submitButton.textContent = isUsingSupabase() ? "Submit for Review" : "Save listing";
 }
 
 function showToast(message, variant = "success") {
@@ -1034,6 +1476,16 @@ function refreshHeroSummary(listings = getVisibleListings()) {
   setHeroSummary(`Showing ${listings.length} ${suffix} on the map.`);
 }
 
+function ensureHeroCompactMode() {
+  if (!elements.heroPanel || !isMobileViewport()) {
+    return;
+  }
+
+  clearHeroCompactTimer();
+  elements.heroPanel.classList.add("is-compact");
+  refreshHeroSummary();
+}
+
 function clearHeroCompactTimer() {
   if (!heroCompactTimeoutId) {
     return;
@@ -1062,6 +1514,8 @@ function scheduleHeroCompactMode() {
 
     elements.heroPanel.classList.add("is-compact");
     refreshHeroSummary();
+    syncAreaNudgeMapViewState();
+    queueAreaNudgeEvaluation();
   }, HERO_COMPACT_DELAY_MS);
 }
 
@@ -1082,6 +1536,8 @@ function handleHeroCompactResize() {
 }
 
 function handleHeroPanelClick() {
+  dismissAreaNudgeIfVisible();
+
   if (!elements.heroPanel || !isMobileViewport() || !elements.heroPanel.classList.contains("is-compact")) {
     return;
   }
@@ -1203,6 +1659,7 @@ async function initializeRemoteListings() {
     render();
     scheduleSplashHide();
     scheduleAutoLocateUser();
+    queueAreaNudgeEvaluation();
   }
 }
 
@@ -1255,6 +1712,7 @@ function hideSplashOverlay() {
       }
 
       elements.splashOverlay.hidden = true;
+      syncAreaNudgeMapViewState();
       maybeScheduleAppTour();
       scheduleHeroCompactMode();
     }, SPLASH_FADE_DURATION_MS + 40);
@@ -1268,6 +1726,7 @@ function initializeSplashVisibility() {
 
   hasHiddenSplash = true;
   elements.splashOverlay.hidden = true;
+  syncAreaNudgeMapViewState();
 }
 
 function hasSeenSplashInSession() {
@@ -1476,15 +1935,40 @@ function getMapFitPadding() {
   };
 }
 
+function closeContributePanel() {
+  if (isMobileViewport()) {
+    if (state.ui.mobileTab !== "add") {
+      return;
+    }
+
+    state.ui.mobileTab = null;
+    updateMobileUI();
+    refreshHeroSummary();
+    ensureHeroCompactMode();
+    return;
+  }
+
+  if (state.ui.desktopPanel === "add") {
+    setDesktopPanel("listings");
+  }
+}
+
 function setMobileTab(tab) {
+  dismissAreaNudgeIfVisible();
+
   if (isMobileViewport() && state.ui.mobileTab === tab) {
     state.ui.mobileTab = null;
   } else {
     state.ui.mobileTab = tab;
   }
 
+  syncAreaNudgeMapViewState();
   updateMobileUI();
   refreshHeroSummary();
+
+  if (isMobileViewport() && !state.ui.mobileTab) {
+    ensureHeroCompactMode();
+  }
 
   if (state.ui.mobileTab) {
     scrollPanelToTop(state.ui.mobileTab);
@@ -1496,11 +1980,14 @@ function setMobileTab(tab) {
 }
 
 function setDesktopPanel(panel) {
+  dismissAreaNudgeIfVisible();
+
   if (panel !== "listings" && panel !== "add") {
     return;
   }
 
   state.ui.desktopPanel = panel;
+  syncAreaNudgeMapViewState();
   updateDesktopUI();
   scrollPanelToTop(panel);
 
@@ -1649,6 +2136,7 @@ function startAppTour() {
     return;
   }
 
+  dismissAreaNudgeIfVisible();
   tourState.active = true;
   tourState.stepIndex = 0;
   state.ui.mobileTab = null;

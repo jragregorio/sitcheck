@@ -154,15 +154,35 @@
       border-color: rgba(154, 93, 0, 0.2);
     }
 
+    .button.success {
+      background: #0a9b77;
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(10, 155, 119, 0.28);
+    }
+
+    .button.success:hover:not(:disabled) {
+      background: #087364;
+    }
+
     .button.danger {
-      background: var(--danger-bg);
-      color: var(--danger-text);
-      border-color: rgba(154, 29, 53, 0.2);
+      background: #d72647;
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(215, 38, 71, 0.24);
+    }
+
+    .button.danger:hover:not(:disabled) {
+      background: #b01e38;
     }
 
     .button:disabled {
-      opacity: 0.65;
-      cursor: wait;
+      background: #e4eaf2 !important;
+      border-color: #c8d3e3 !important;
+      color: #7b8799 !important;
+      box-shadow: none !important;
+      opacity: 1;
+      cursor: not-allowed;
     }
 
     .auth-form {
@@ -203,6 +223,33 @@
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+    }
+
+    .queue-search {
+      width: min(360px, 100%);
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
+
+    .refresh-button {
+      width: min(360px, 100%);
+      justify-content: center;
+      background: var(--primary);
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 12px 24px rgba(36, 87, 245, 0.22);
+    }
+
+    .refresh-button:hover {
+      background: rgba(36, 87, 245, 0.92);
+    }
+
+    .refresh-button:disabled {
+      box-shadow: none;
     }
 
     .queue-list {
@@ -287,6 +334,25 @@
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+    }
+
+    .queue-actions .button {
+      min-height: 42px;
+      padding: 0 18px;
+      font-weight: 700;
+    }
+
+    .queue-actions .button.secondary {
+      background: #fff;
+      border-color: #7f95b8;
+      color: #1a3152;
+      box-shadow: 0 4px 12px rgba(19, 34, 56, 0.08);
+    }
+
+    .queue-actions .button.secondary:hover:not(:disabled) {
+      background: #eef4ff;
+      border-color: var(--primary);
+      color: var(--primary-dark);
     }
 
     .button.secondary {
@@ -425,6 +491,89 @@
         top: 8px;
       }
     }
+
+    .review-confirm-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .review-confirm-modal.hidden {
+      display: none;
+    }
+
+    .review-confirm-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(19, 34, 56, 0.52);
+      backdrop-filter: blur(3px);
+    }
+
+    .review-confirm-dialog {
+      position: relative;
+      z-index: 1;
+      width: min(440px, 100%);
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 24px 48px rgba(19, 34, 56, 0.22);
+    }
+
+    .review-confirm-dialog h2 {
+      margin: 0 0 10px;
+      font-size: 1.25rem;
+      line-height: 1.3;
+    }
+
+    .review-confirm-name {
+      margin: 0 0 4px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .review-confirm-location {
+      margin: 0 0 12px;
+      font-size: 0.94rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .review-confirm-message {
+      margin: 0 0 18px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.94rem;
+      line-height: 1.45;
+    }
+
+    .review-confirm-message.is-approve {
+      background: var(--ok-bg);
+      color: var(--ok-text);
+      border: 1px solid rgba(8, 115, 100, 0.2);
+    }
+
+    .review-confirm-message.is-reject {
+      background: var(--danger-bg);
+      color: var(--danger-text);
+      border: 1px solid rgba(154, 29, 53, 0.22);
+    }
+
+    .review-confirm-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .review-confirm-actions .button {
+      min-height: 42px;
+      padding: 0 18px;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -476,13 +625,41 @@
           <option value="all">All</option>
         </select>
         <div class="toolbar-actions">
-          <button id="refresh-button" class="button" type="button">Refresh</button>
+          <input
+            id="queue-search"
+            class="queue-search"
+            type="search"
+            placeholder="Search name, location, notes…"
+            autocomplete="off"
+            aria-label="Search submissions"
+          >
+          <button id="refresh-button" class="button refresh-button" type="button">Refresh</button>
         </div>
       </div>
 
       <div id="queue-list" class="queue-list"></div>
     </section>
   </main>
+
+  <div id="review-confirm-modal" class="review-confirm-modal hidden" hidden>
+    <div class="review-confirm-backdrop" data-review-confirm-dismiss aria-hidden="true"></div>
+    <div
+      class="review-confirm-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="review-confirm-title"
+      aria-describedby="review-confirm-message"
+    >
+      <h2 id="review-confirm-title">Confirm action</h2>
+      <p id="review-confirm-name" class="review-confirm-name"></p>
+      <p id="review-confirm-location" class="review-confirm-location"></p>
+      <p id="review-confirm-message" class="review-confirm-message"></p>
+      <div class="review-confirm-actions">
+        <button id="review-confirm-cancel" type="button" class="button secondary">Cancel</button>
+        <button id="review-confirm-confirm" type="button" class="button success">Confirm</button>
+      </div>
+    </div>
+  </div>
 
   <script
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"

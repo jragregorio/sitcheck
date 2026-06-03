@@ -2,6 +2,47 @@
 
 Version format: **MAJOR.MINOR.PATCH** with PATCH **1–9 only**. When PATCH would hit 10, carry to MINOR (e.g. `1.2.11` → `1.3.1`). Use `npm run bump:version` for releases.
 
+## [1.4.4] - 2026-06-03
+
+### Added
+- **Nearby suggestions** (Phase 2): map chip below the compact hero (hero stays visible), **About** settings to enable/disable and choose **200 m** or **500 m** radius, and smarter timing (map active ~12 s, stationary ~30 s).
+
+### Changed
+- Area nudge cooldown starts when you **Dismiss** or tap **Add toilet** (24 hours per area), not when the chip first appears.
+- Dismissing the chip or returning from **Add toilet** keeps the **reduced** top hero bar instead of expanding to the full hero.
+
+## [1.4.3] - 2026-06-03
+
+### Added
+- **Area nudge** when no restroom listings are within 200 m: top banner replaces the compact hero (slide animation on mobile), with **Add toilet** and **Dismiss**, 24-hour per-area cooldown, and foreground-only checks while you use the map.
+
+## [1.4.2] - 2026-06-03
+
+### Added
+- Live location pin updates on the map while the app is open (foreground only).
+- Moderator approve/reject confirmation dialog with listing name, location, and action summary.
+
+### Changed
+- Contribute panel closes automatically after a successful “Submit for review”.
+- Moderator queue action buttons use stronger Approve (green), Reject (red), and Edit styling with clearer disabled states.
+- Privacy policy updated to describe foreground map position updates.
+
+## [1.4.1] - 2026-06-03
+
+### Changed
+- Android app locked to portrait orientation so the map UI stays usable on phones and emulators.
+
+## [1.3.9] - 2026-06-02
+
+### Changed
+- Moderator console: added live search input for submissions and refreshed the Refresh button styling to match the toolbar controls.
+
+## [1.3.8] - 2026-06-02
+
+### Fixed
+- Moderation now reliably removes public listings when rejected and re-creates/links them when re-approved, using `toilets.submission_id` as the canonical link (with legacy `source_submission_id` fallback).
+- Prevented false “sync failed” errors when the public listing already exists (avoid duplicate-key inserts).
+
 ## [1.3.7] - 2026-06-02
 
 ### Changed

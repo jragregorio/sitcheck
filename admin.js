@@ -18,8 +18,16 @@ const supabaseClient = supabaseUrl && supabaseAnonKey && window.supabase?.create
 const state = {
   user: null,
   queueFilter: "pending",
+  queueSearch: "",
   canModerate: true,
   editingSubmissionId: null
+};
+
+const reviewConfirmState = {
+  action: null,
+  submissionId: null,
+  approveButton: null,
+  rejectButton: null
 };
 
 const elements = {
@@ -33,8 +41,16 @@ const elements = {
   signOutButton: document.querySelector("#sign-out-button"),
   refreshButton: document.querySelector("#refresh-button"),
   queueFilter: document.querySelector("#queue-filter"),
+  queueSearch: document.querySelector("#queue-search"),
   queueList: document.querySelector("#queue-list"),
-  sessionLabel: document.querySelector("#session-label")
+  sessionLabel: document.querySelector("#session-label"),
+  reviewConfirmModal: document.querySelector("#review-confirm-modal"),
+  reviewConfirmTitle: document.querySelector("#review-confirm-title"),
+  reviewConfirmName: document.querySelector("#review-confirm-name"),
+  reviewConfirmLocation: document.querySelector("#review-confirm-location"),
+  reviewConfirmMessage: document.querySelector("#review-confirm-message"),
+  reviewConfirmCancel: document.querySelector("#review-confirm-cancel"),
+  reviewConfirmConfirm: document.querySelector("#review-confirm-confirm")
 };
 
 bindEvents();
@@ -95,6 +111,106 @@ function bindEvents() {
     state.queueFilter = elements.queueFilter.value;
     void loadQueue();
   });
+
+  if (elements.queueSearch) {
+    elements.queueSearch.addEventListener("input", () => {
+      state.queueSearch = elements.queueSearch.value.trim().toLowerCase();
+      void loadQueue({ silent: true });
+    });
+  }
+
+  bindReviewConfirmEvents();
+}
+
+function bindReviewConfirmEvents() {
+  if (!elements.reviewConfirmModal) {
+    return;
+  }
+
+  elements.reviewConfirmCancel.addEventListener("click", () => {
+    closeReviewConfirm();
+  });
+
+  elements.reviewConfirmConfirm.addEventListener("click", () => {
+    void confirmReviewAction();
+  });
+
+  elements.reviewConfirmModal.querySelectorAll("[data-review-confirm-dismiss]").forEach((node) => {
+    node.addEventListener("click", () => {
+      closeReviewConfirm();
+    });
+  });
+
+  document.addEventListener("keydown", handleReviewConfirmKeydown);
+}
+
+function openReviewConfirm({ action, record, approveButton, rejectButton }) {
+  if (!elements.reviewConfirmModal || !record) {
+    return;
+  }
+
+  const isApprove = action === "approved";
+
+  elements.reviewConfirmTitle.textContent = isApprove
+    ? "Approve this listing?"
+    : "Reject this listing?";
+  elements.reviewConfirmName.textContent = record.name || "Unnamed restroom";
+  elements.reviewConfirmLocation.textContent = record.location_text || "Location not provided";
+  elements.reviewConfirmMessage.textContent = isApprove
+    ? "This listing will appear on the public map for everyone."
+    : "This listing will be marked rejected. If it was previously approved, it will be removed from the public map.";
+  elements.reviewConfirmMessage.className = `review-confirm-message ${isApprove ? "is-approve" : "is-reject"}`;
+
+  elements.reviewConfirmConfirm.textContent = isApprove ? "Approve" : "Reject";
+  elements.reviewConfirmConfirm.className = isApprove ? "button success" : "button danger";
+  elements.reviewConfirmConfirm.disabled = false;
+
+  reviewConfirmState.action = action;
+  reviewConfirmState.submissionId = record.id;
+  reviewConfirmState.approveButton = approveButton;
+  reviewConfirmState.rejectButton = rejectButton;
+
+  elements.reviewConfirmModal.hidden = false;
+  elements.reviewConfirmModal.classList.remove("hidden");
+  elements.reviewConfirmCancel.focus();
+}
+
+function closeReviewConfirm() {
+  if (!elements.reviewConfirmModal) {
+    return;
+  }
+
+  elements.reviewConfirmModal.hidden = true;
+  elements.reviewConfirmModal.classList.add("hidden");
+  elements.reviewConfirmConfirm.disabled = false;
+
+  reviewConfirmState.action = null;
+  reviewConfirmState.submissionId = null;
+  reviewConfirmState.approveButton = null;
+  reviewConfirmState.rejectButton = null;
+}
+
+function handleReviewConfirmKeydown(event) {
+  if (elements.reviewConfirmModal?.hidden) {
+    return;
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeReviewConfirm();
+  }
+}
+
+async function confirmReviewAction() {
+  const { action, submissionId, approveButton, rejectButton } = reviewConfirmState;
+
+  if (!action || !submissionId || !approveButton || !rejectButton) {
+    return;
+  }
+
+  elements.reviewConfirmConfirm.disabled = true;
+  closeReviewConfirm();
+  await updateReviewState(submissionId, action, approveButton, rejectButton);
 }
 
 async function init() {
@@ -126,18 +242,22 @@ function setSignInBusy(isBusy) {
   elements.signInButton.textContent = isBusy ? "Signing in..." : "Sign in";
 }
 
-async function loadQueue() {
+async function loadQueue(options = {}) {
   if (!supabaseClient || !state.user) {
     return;
   }
 
+  const { silent = false } = options;
+
   elements.refreshButton.disabled = true;
   elements.refreshButton.textContent = "Refreshing...";
-  hideStatus();
+  if (!silent) {
+    hideStatus();
+  }
 
   try {
     const records = await fetchSubmissions();
-    renderQueue(records);
+    renderQueue(filterQueueRecords(records));
   } catch (error) {
     renderQueue([]);
     showStatus(error.message || "Could not load submissions.", true);
@@ -145,6 +265,27 @@ async function loadQueue() {
     elements.refreshButton.disabled = false;
     elements.refreshButton.textContent = "Refresh";
   }
+}
+
+function filterQueueRecords(records) {
+  const term = state.queueSearch;
+
+  if (!term) {
+    return records;
+  }
+
+  return records.filter((record) => {
+    const haystack = [
+      record.name,
+      record.location_text,
+      record.notes
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return haystack.includes(term);
+  });
 }
 
 async function fetchSubmissions() {
@@ -232,12 +373,17 @@ function renderQueue(records) {
     const editPanel = createSubmissionEditPanel(record);
 
     const approveButton = document.createElement("button");
-    approveButton.className = "button warn";
+    approveButton.className = "button success";
     approveButton.type = "button";
     approveButton.textContent = "Approve";
     approveButton.disabled = !state.canModerate || record.status === "approved";
     approveButton.addEventListener("click", () => {
-      void updateReviewState(record.id, "approved", approveButton, rejectButton);
+      openReviewConfirm({
+        action: "approved",
+        record,
+        approveButton,
+        rejectButton
+      });
     });
 
     const rejectButton = document.createElement("button");
@@ -246,7 +392,12 @@ function renderQueue(records) {
     rejectButton.textContent = "Reject";
     rejectButton.disabled = !state.canModerate || record.status === "rejected";
     rejectButton.addEventListener("click", () => {
-      void updateReviewState(record.id, "rejected", approveButton, rejectButton);
+      openReviewConfirm({
+        action: "rejected",
+        record,
+        approveButton,
+        rejectButton
+      });
     });
 
     editButton.addEventListener("click", () => {
@@ -486,42 +637,100 @@ async function saveSubmissionEdits(record, form, saveButton) {
 }
 
 async function syncApprovedListingToToilet(submissionId, listingPayload) {
+  // Always fetch the submission so we can (a) ensure the public row exists and
+  // (b) link legacy rows by setting submission_id when it is missing.
+  const { data: submission, error: fetchError } = await supabaseClient
+    .from(SUPABASE_TABLES.submissions)
+    .select("id, name, location_text, latitude, longitude")
+    .eq("id", submissionId)
+    .single();
+
+  if (fetchError || !submission) {
+    throw new Error("Submission saved, but the public listing could not be synced (submission details missing).");
+  }
+
   const toiletPayload = {
+    name: submission.name,
+    location_text: submission.location_text,
+    latitude: submission.latitude,
+    longitude: submission.longitude,
     has_bidet: listingPayload.has_bidet,
     has_tissue: listingPayload.has_tissue,
     cleanliness: listingPayload.cleanliness,
     pressure_level: listingPayload.pressure_level,
     payment_required: listingPayload.payment_required,
     fee: listingPayload.fee,
-    notes: listingPayload.notes
+    notes: listingPayload.notes,
+    submission_id: submissionId,
+    // Keep legacy column populated for backward compatibility / debugging.
+    source_submission_id: String(submissionId)
   };
 
-  const { data, error } = await supabaseClient
+  // 1) Update by submission_id (normal path)
+  const attempt = await supabaseClient
     .from(SUPABASE_TABLES.toilets)
     .update(toiletPayload)
-    .eq("source_submission_id", submissionId)
+    .eq("submission_id", submissionId)
     .select("id");
 
-  if (error) {
-    throw new Error("Submission saved, but the public listing could not be synced. Check moderator update permissions on toilets.");
+  if (attempt.error) {
+    throw new Error(
+      `Submission saved, but the public listing could not be synced. Check moderator update permissions on toilets. (${attempt.error.message})`
+    );
   }
 
-  if (data?.length) {
+  if (attempt.data?.length) {
     return;
   }
 
-  const fallback = await supabaseClient
+  // 1b) Update by legacy source_submission_id (covers rows linked via text column only)
+  const legacySourceAttempt = await supabaseClient
     .from(SUPABASE_TABLES.toilets)
     .update(toiletPayload)
     .eq("source_submission_id", String(submissionId))
     .select("id");
 
-  if (fallback.error) {
-    throw new Error("Submission saved, but the public listing could not be synced. Check moderator update permissions on toilets.");
+  if (legacySourceAttempt.error) {
+    throw new Error(
+      `Submission saved, but the public listing could not be synced. Check moderator update permissions on toilets. (${legacySourceAttempt.error.message})`
+    );
   }
 
-  if (!fallback.data?.length) {
-    throw new Error("Submission saved, but no linked public listing was found to sync.");
+  if (legacySourceAttempt.data?.length) {
+    return;
+  }
+
+  // 2) Link legacy public rows that were created without submission_id
+  const legacyLink = await supabaseClient
+    .from(SUPABASE_TABLES.toilets)
+    .update(toiletPayload)
+    .is("submission_id", null)
+    .eq("name", submission.name)
+    .eq("location_text", submission.location_text)
+    .eq("latitude", submission.latitude)
+    .eq("longitude", submission.longitude)
+    .select("id");
+
+  if (legacyLink.error) {
+    throw new Error(
+      `Submission saved, but the public listing could not be synced. Check moderator update permissions on toilets. (${legacyLink.error.message})`
+    );
+  }
+
+  if (legacyLink.data?.length) {
+    return;
+  }
+
+  // 3) Insert a new public row if none exists yet (re-approving after reject, etc.)
+  const created = await supabaseClient
+    .from(SUPABASE_TABLES.toilets)
+    .insert(toiletPayload)
+    .select("id");
+
+  if (created.error) {
+    throw new Error(
+      `Submission saved, but the public listing could not be created. Check moderator insert permissions on toilets. (${created.error.message})`
+    );
   }
 }
 
@@ -580,6 +789,17 @@ async function updateReviewState(submissionId, status, approveButton, rejectButt
     return;
   }
 
+  if (status === "rejected") {
+    try {
+      await removeListingForSubmission(submissionId);
+    } catch (removeError) {
+      showStatus(`Submission rejected, but removing the public listing failed: ${removeError.message}`, true);
+      approveButton.disabled = false;
+      rejectButton.disabled = false;
+      return;
+    }
+  }
+
   if (status === "approved") {
     const { data: submission, error: fetchError } = await supabaseClient
       .from(SUPABASE_TABLES.submissions)
@@ -601,6 +821,49 @@ async function updateReviewState(submissionId, status, approveButton, rejectButt
 
   showStatus(`Submission marked as ${status}.`, false, true);
   await loadQueue();
+}
+
+async function removeListingForSubmission(submissionId) {
+  // Public listings live in `toilets` and are linked by `submission_id`.
+  // Rejecting a submission should remove its previously approved listing (if one exists).
+  const attempt = await supabaseClient
+    .from(SUPABASE_TABLES.toilets)
+    .delete()
+    .eq("submission_id", submissionId)
+    .select("id");
+
+  if (attempt.error) {
+    throw new Error(`Check moderator delete permissions on toilets. (${attempt.error.message})`);
+  }
+
+  if (attempt.data?.length) {
+    return;
+  }
+
+  // Legacy public rows may be missing submission_id; delete by exact coordinates + text.
+  const { data: submission, error: fetchError } = await supabaseClient
+    .from(SUPABASE_TABLES.submissions)
+    .select("name, location_text, latitude, longitude")
+    .eq("id", submissionId)
+    .single();
+
+  if (fetchError || !submission) {
+    return;
+  }
+
+  const legacyDelete = await supabaseClient
+    .from(SUPABASE_TABLES.toilets)
+    .delete()
+    .is("submission_id", null)
+    .eq("name", submission.name)
+    .eq("location_text", submission.location_text)
+    .eq("latitude", submission.latitude)
+    .eq("longitude", submission.longitude)
+    .select("id");
+
+  if (legacyDelete.error) {
+    throw new Error(`Check moderator delete permissions on toilets. (${legacyDelete.error.message})`);
+  }
 }
 
 function buildListingPayloadFromRecord(record) {
