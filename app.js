@@ -25,6 +25,26 @@ const TOUR_STEPS = [
     targetSelector: '[data-tour-target="add-tab"]',
     title: "Add a restroom",
     body: "Know a spot that is missing? Tap Add toilet to place a pin or drag the Orange Pin to the right spot. We will suggest the location details automatically. Then submit it for review."
+  },
+  {
+    targetSelector: '[data-tour-target="menu-button"]',
+    title: "Open the menu",
+    body: "Tap the menu button whenever you want to adjust SitCheck or learn more about the app.",
+    menuStep: true
+  },
+  {
+    targetSelector: '[data-tour-target="options-menu"]',
+    title: "Choose your options",
+    body: "Options lets you control nearby suggestions and contribution reminders.",
+    menuStep: true,
+    openMenu: true
+  },
+  {
+    targetSelector: '[data-tour-target="about-menu"]',
+    title: "About SitCheck",
+    body: "About SitCheck has app details, support links, reviews, and a button to replay this tour.",
+    menuStep: true,
+    openMenu: true
   }
 ];
 const SPLASH_MIN_DURATION_MS = 5000;
@@ -2704,6 +2724,7 @@ function startAppTour() {
   }
 
   dismissAreaNudgeIfVisible();
+  setAppMenuOpenForTour(false);
   tourState.active = true;
   tourState.stepIndex = 0;
   state.ui.mobileTab = null;
@@ -2742,6 +2763,8 @@ function completeAppTour() {
   }
 
   document.body.classList.remove("app-tour-open");
+  elements.tourOverlay?.classList.remove("is-menu-step");
+  setAppMenuOpenForTour(false);
 
   try {
     window.localStorage.setItem(TOUR_COMPLETE_STORAGE_KEY, "1");
@@ -2757,6 +2780,9 @@ function renderAppTourStep() {
     completeAppTour();
     return;
   }
+
+  setAppMenuOpenForTour(Boolean(step.openMenu));
+  elements.tourOverlay.classList.toggle("is-menu-step", Boolean(step.menuStep));
 
   const target = document.querySelector(step.targetSelector);
 
@@ -2783,6 +2809,16 @@ function renderAppTourStep() {
   }
 
   positionAppTourSpotlight(target);
+}
+
+function setAppMenuOpenForTour(shouldOpen) {
+  if (!elements.appMenu) {
+    return;
+  }
+
+  elements.appMenu.hidden = !shouldOpen;
+  elements.aboutButton?.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+  document.body.classList.toggle("app-menu-open", shouldOpen);
 }
 
 function positionAppTourSpotlight(target) {

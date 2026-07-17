@@ -2,6 +2,11 @@
 
 Version format: **MAJOR.MINOR.PATCH** with PATCH **1–9 only**. When PATCH would hit 10, carry to MINOR (e.g. `1.2.11` → `1.3.1`). Use `npm run bump:version` for releases.
 
+## [1.5.6] - 2026-07-18
+
+### Changed
+- **App Tour:** expanded the mobile tour to introduce the Menu button and explain the Options and About SitCheck destinations.
+
 ## [1.5.5] - 2026-07-17
 
 ### Added

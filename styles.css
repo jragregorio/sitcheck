@@ -1683,7 +1683,7 @@ h2 {
   .app-tour {
     position: fixed;
     inset: 0;
-    z-index: 48;
+    z-index: 110;
     pointer-events: none;
   }
 
@@ -1719,6 +1719,11 @@ h2 {
     pointer-events: auto;
   }
 
+  .app-tour.is-menu-step .app-tour-card {
+    top: 12px;
+    bottom: auto;
+  }
+
   .app-tour-step {
     margin: 0 0 6px;
     color: var(--primary);
@@ -1752,11 +1757,6 @@ h2 {
 
   body.app-tour-open {
     overflow: hidden;
-  }
-
-  body.app-tour-open .mobile-about-button {
-    opacity: 0;
-    pointer-events: none;
   }
 
   .leaflet-top.leaflet-right .leaflet-control-map-stack {

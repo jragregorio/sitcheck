@@ -334,7 +334,7 @@
     <div id="app-tour" class="app-tour" hidden>
       <div id="app-tour-spotlight" class="app-tour-spotlight" aria-hidden="true"></div>
       <section class="app-tour-card" role="dialog" aria-modal="true" aria-labelledby="app-tour-title">
-        <p id="app-tour-step" class="app-tour-step">Step 1 of 3</p>
+        <p id="app-tour-step" class="app-tour-step">Step 1 of 6</p>
         <h2 id="app-tour-title" class="app-tour-title">Explore the map</h2>
         <p id="app-tour-body" class="app-tour-body">Blue pins are restrooms. Tap a pin to see details.</p>
         <div class="app-tour-actions">
@@ -353,6 +353,7 @@
       aria-haspopup="dialog"
       aria-expanded="false"
       title="SitCheck menu"
+      data-tour-target="menu-button"
     >
       <span aria-hidden="true">☰</span>
     </button>
@@ -368,11 +369,11 @@
           <button class="app-menu-close" type="button" data-app-menu-close aria-label="Close app menu">×</button>
         </div>
         <nav class="app-menu-links" aria-label="SitCheck menu">
-          <a class="app-menu-link" href="options.html">
+          <a class="app-menu-link" href="options.html" data-tour-target="options-menu">
             <strong>Options</strong>
             <span>Nearby suggestions and contribution reminders</span>
           </a>
-          <a class="app-menu-link" href="about.html">
+          <a class="app-menu-link" href="about.html" data-tour-target="about-menu">
             <strong>About SitCheck</strong>
             <span>App details, support, tour, and reviews</span>
           </a>
