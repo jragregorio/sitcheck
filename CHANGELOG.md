@@ -2,6 +2,22 @@
 
 Version format: **MAJOR.MINOR.PATCH** with PATCH **1–9 only**. When PATCH would hit 10, carry to MINOR (e.g. `1.2.11` → `1.3.1`). Use `npm run bump:version` for releases.
 
+## [1.4.9] - 2026-07-17
+
+### Changed
+- **About:** made the **Back to Map** button a prominent full-width primary (brand-blue) action so it clearly stands out as the way to return to the home screen.
+
+## [1.4.8] - 2026-07-17
+
+### Changed
+- **Contribution reminders:** shortened to ~12 hours, **on by default** for new/unset installs, one-time in-app notice on how to disable, and updated About/privacy copy.
+
+## [1.4.7] - 2026-07-17
+
+### Added
+- **Contribution reminders** (Android): optional system notifications after ~48 hours away from the app, with About toggle (default off), notification permission request, schedule-on-background / cancel-on-open, and tap-to-open **Add toilet** (`?add=1`).
+- Privacy policy section for optional local contribution reminders (device-scheduled, no push server).
+
 ## [1.4.6] - 2026-06-03
 
 ### Changed

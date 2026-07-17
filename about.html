@@ -103,6 +103,20 @@
       color: #fff;
     }
 
+    .back-button {
+      flex-basis: 100%;
+      background: var(--primary);
+      border-color: transparent;
+      color: #fff;
+      min-height: 48px;
+      font-size: 1.05rem;
+      box-shadow: 0 8px 20px rgba(36, 87, 245, 0.28);
+    }
+
+    .back-button:hover {
+      background: #153bb6;
+    }
+
     .release-text {
       color: var(--muted);
     }
@@ -255,7 +269,7 @@
         <br>
         <p>
           <strong>Made by JRAG</strong> -
-          <span class="release-text">release v<span id="app-version">1.4.6</span></span>
+          <span class="release-text">release v<span id="app-version">1.4.9</span></span>
         </p>
       </div>
       <br>
@@ -264,7 +278,7 @@
         <a class="button" href="admin.html">Moderator</a>
         <a class="button" href="index.html?tour=1">Show App Tour</a>
         <a class="button" href="privacy-policy.html">Privacy Policy</a>
-        <a class="button" href="index.html">Back to Map</a>
+        <a class="button back-button" href="index.html">Back to Map</a>
       </div>
     </section>
 
@@ -300,8 +314,28 @@
         >
       </label>
     </section>
+
+    <section class="card settings-card">
+      <div class="settings-heading-row">
+        <h2>Contribution reminders</h2>
+        <label class="toggle-switch" for="contribution-reminder-enabled">
+          <input
+            class="toggle-input"
+            type="checkbox"
+            id="contribution-reminder-enabled"
+            aria-label="Enable contribution reminders"
+          >
+          <span class="toggle-track" aria-hidden="true"></span>
+        </label>
+      </div>
+      <p class="settings-description">
+        On by default. SitCheck may remind you after about 12 hours away. Turn this off here anytime.
+      </p>
+      <p id="contribution-reminder-status" class="settings-description" hidden></p>
+    </section>
   </main>
 
+  <script src="contribution-reminders.js"></script>
   <script>
     const AREA_NUDGE_SETTINGS_STORAGE_KEY = "sitcheck-area-nudge-settings";
     const AREA_NUDGE_RADIUS_MIN_M = 200;
@@ -314,6 +348,9 @@
     const enabledInput = document.querySelector("#area-nudge-enabled");
     const radiusSlider = document.querySelector("#area-nudge-radius");
     const radiusValue = document.querySelector("#area-nudge-radius-value");
+    const contributionReminderInput = document.querySelector("#contribution-reminder-enabled");
+    const contributionReminderStatus = document.querySelector("#contribution-reminder-status");
+    const reminders = window.SitCheckContributionReminders;
 
     function normalizeRadiusMeters(meters) {
       const rounded = Math.round(Number(meters) || AREA_NUDGE_RADIUS_MIN_M);
@@ -338,6 +375,22 @@
     function syncRadiusControlState() {
       const enabled = enabledInput.checked;
       radiusSlider.disabled = !enabled;
+    }
+
+    function setContributionReminderStatus(message, isError = false) {
+      if (!contributionReminderStatus) {
+        return;
+      }
+
+      if (!message) {
+        contributionReminderStatus.hidden = true;
+        contributionReminderStatus.textContent = "";
+        return;
+      }
+
+      contributionReminderStatus.hidden = false;
+      contributionReminderStatus.textContent = message;
+      contributionReminderStatus.style.color = isError ? "#9a1d35" : "var(--muted)";
     }
 
     function loadAreaNudgeSettingsForm() {
@@ -370,12 +423,56 @@
       syncRadiusControlState();
     }
 
+    function loadContributionReminderSettingsForm() {
+      if (!contributionReminderInput || !reminders) {
+        return;
+      }
+
+      contributionReminderInput.checked = reminders.isEnabled();
+
+      if (!reminders.isNativePlatform()) {
+        setContributionReminderStatus("Available in the Android app after install.");
+      } else {
+        setContributionReminderStatus("");
+      }
+    }
+
+    async function handleContributionReminderToggle() {
+      if (!contributionReminderInput || !reminders) {
+        return;
+      }
+
+      contributionReminderInput.disabled = true;
+      setContributionReminderStatus("");
+
+      try {
+        if (contributionReminderInput.checked) {
+          const result = await reminders.enable();
+          contributionReminderInput.checked = Boolean(result.ok);
+          setContributionReminderStatus(result.message || "", !result.ok);
+        } else {
+          await reminders.disable();
+          setContributionReminderStatus("");
+        }
+      } finally {
+        contributionReminderInput.disabled = false;
+      }
+    }
+
     enabledInput.addEventListener("change", saveAreaNudgeSettingsFromForm);
     radiusSlider.addEventListener("input", () => {
       syncRadiusDisplay();
     });
     radiusSlider.addEventListener("change", saveAreaNudgeSettingsFromForm);
+
+    if (contributionReminderInput) {
+      contributionReminderInput.addEventListener("change", () => {
+        void handleContributionReminderToggle();
+      });
+    }
+
     loadAreaNudgeSettingsForm();
+    loadContributionReminderSettingsForm();
   </script>
 </body>
 </html>

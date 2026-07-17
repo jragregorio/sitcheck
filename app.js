@@ -243,6 +243,7 @@ bindEvents();
 initMap();
 syncDataModeUI();
 render();
+void initContributionReminderRuntime();
 
 if (supabaseClient) {
   void initializeRemoteListings();
@@ -253,6 +254,8 @@ if (supabaseClient) {
 
 if (hasHiddenSplash) {
   maybeScheduleAppTour();
+  maybeShowContributionReminderNotice();
+  maybeOpenAddFromQuery();
   scheduleHeroCompactMode();
   syncAreaNudgeMapViewState();
   updateMapControlLayout();
@@ -1765,6 +1768,8 @@ function hideSplashOverlay() {
       elements.splashOverlay.hidden = true;
       syncAreaNudgeMapViewState();
       maybeScheduleAppTour();
+      maybeShowContributionReminderNotice();
+      maybeOpenAddFromQuery();
       scheduleHeroCompactMode();
     }, SPLASH_FADE_DURATION_MS + 40);
   }, delayMs);
@@ -2179,6 +2184,56 @@ function clearTourQueryParam() {
     window.history.replaceState({}, "", url);
   } catch {
     // Ignore URL API issues and continue tour flow.
+  }
+}
+
+function initContributionReminderRuntime() {
+  const reminders = window.SitCheckContributionReminders;
+  if (!reminders || typeof reminders.init !== "function") {
+    return Promise.resolve();
+  }
+
+  return reminders.init();
+}
+
+function maybeShowContributionReminderNotice() {
+  const reminders = window.SitCheckContributionReminders;
+  if (!reminders || typeof reminders.showNoticeIfNeeded !== "function") {
+    return;
+  }
+
+  reminders.showNoticeIfNeeded(showToast);
+}
+
+function maybeOpenAddFromQuery() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("add") !== "1") {
+      return;
+    }
+
+    clearAddQueryParam();
+
+    window.setTimeout(() => {
+      if (isMobileViewport()) {
+        setMobileTab("add");
+        return;
+      }
+
+      setDesktopPanel("add");
+    }, 280);
+  } catch {
+    // Ignore URL API issues.
+  }
+}
+
+function clearAddQueryParam() {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("add");
+    window.history.replaceState({}, "", url);
+  } catch {
+    // Ignore URL API issues.
   }
 }
 
