@@ -108,52 +108,112 @@
     }
 
     .settings-card h2 {
-      margin: 0 0 8px;
+      margin: 0;
       font-size: 1.2rem;
       color: var(--text);
     }
 
-    .settings-card p {
-      margin: 0 0 14px;
+    .settings-heading-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .settings-description {
+      margin: 0 0 18px;
     }
 
     .setting-row {
       display: grid;
-      gap: 6px;
-      margin-bottom: 14px;
+      gap: 10px;
+      margin-bottom: 0;
       font-weight: 600;
       font-size: 0.95rem;
       color: var(--text);
     }
 
-    .setting-row:last-child {
-      margin-bottom: 0;
-    }
-
-    .setting-toggle {
+    .radius-setting-header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      min-height: 44px;
-      font-weight: 600;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    #area-nudge-radius-value {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .radius-slider {
+      width: 100%;
+      height: 36px;
+      margin: 0;
+      accent-color: var(--primary);
       cursor: pointer;
     }
 
-    .setting-toggle input {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--primary);
+    .radius-slider:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
 
-    .setting-row select {
-      width: 100%;
-      min-height: 44px;
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
+    .toggle-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .toggle-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .toggle-track {
+      display: block;
+      width: 52px;
+      height: 30px;
+      border-radius: 999px;
+      background: rgba(95, 111, 134, 0.32);
+      transition: background 180ms ease;
+      position: relative;
+    }
+
+    .toggle-track::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
       background: #fff;
-      color: var(--text);
-      font: inherit;
+      box-shadow: 0 2px 8px rgba(19, 34, 56, 0.18);
+      transition: transform 180ms ease;
+    }
+
+    .toggle-input:checked + .toggle-track {
+      background: var(--primary);
+    }
+
+    .toggle-input:checked + .toggle-track::after {
+      transform: translateX(22px);
+    }
+
+    .toggle-input:focus-visible + .toggle-track {
+      outline: 2px solid rgba(36, 87, 245, 0.35);
+      outline-offset: 2px;
     }
 
     @media (max-width: 860px) {
@@ -195,7 +255,7 @@
         <br>
         <p>
           <strong>Made by JRAG</strong> -
-          <span class="release-text">release v<span id="app-version">1.4.4</span></span>
+          <span class="release-text">release v<span id="app-version">1.4.6</span></span>
         </p>
       </div>
       <br>
@@ -209,31 +269,76 @@
     </section>
 
     <section class="card settings-card">
-      <h2>Nearby suggestions</h2>
-      <p>Control when SitCheck suggests adding a listing because none are close by.</p>
-      <label class="setting-toggle">
-        <input id="area-nudge-enabled" type="checkbox" checked>
-        <span>Suggest adding a listing when none are nearby</span>
-      </label>
-      <label class="setting-row">
-        <span>Search radius</span>
-        <select id="area-nudge-radius" aria-label="Nearby listing search radius">
-          <option value="0.2">200 meters</option>
-          <option value="0.5">500 meters</option>
-        </select>
+      <div class="settings-heading-row">
+        <h2>Nearby Suggestions</h2>
+        <label class="toggle-switch" for="area-nudge-enabled">
+          <input
+            class="toggle-input"
+            type="checkbox"
+            id="area-nudge-enabled"
+            checked
+            aria-label="Enable nearby suggestions"
+          >
+          <span class="toggle-track" aria-hidden="true"></span>
+        </label>
+      </div>
+      <p class="settings-description">Control when SitCheck suggests adding a listing because none are close by.</p>
+      <label class="setting-row radius-setting">
+        <span class="radius-setting-header">
+          <span>Search radius</span>
+          <span id="area-nudge-radius-value">200 m</span>
+        </span>
+        <input
+          class="radius-slider"
+          type="range"
+          id="area-nudge-radius"
+          min="200"
+          max="500"
+          step="10"
+          value="200"
+          aria-label="Nearby listing search radius in meters"
+        >
       </label>
     </section>
   </main>
 
   <script>
     const AREA_NUDGE_SETTINGS_STORAGE_KEY = "sitcheck-area-nudge-settings";
+    const AREA_NUDGE_RADIUS_MIN_M = 200;
+    const AREA_NUDGE_RADIUS_MAX_M = 500;
     const DEFAULT_AREA_NUDGE_SETTINGS = {
       enabled: true,
       radiusKm: 0.2
     };
 
     const enabledInput = document.querySelector("#area-nudge-enabled");
-    const radiusSelect = document.querySelector("#area-nudge-radius");
+    const radiusSlider = document.querySelector("#area-nudge-radius");
+    const radiusValue = document.querySelector("#area-nudge-radius-value");
+
+    function normalizeRadiusMeters(meters) {
+      const rounded = Math.round(Number(meters) || AREA_NUDGE_RADIUS_MIN_M);
+      return Math.min(AREA_NUDGE_RADIUS_MAX_M, Math.max(AREA_NUDGE_RADIUS_MIN_M, rounded));
+    }
+
+    function formatRadiusMeters(meters) {
+      return `${normalizeRadiusMeters(meters)} m`;
+    }
+
+    function readRadiusMetersFromSettings(radiusKm) {
+      const meters = Math.round(Number(radiusKm) * 1000);
+      return normalizeRadiusMeters(meters);
+    }
+
+    function syncRadiusDisplay() {
+      const meters = normalizeRadiusMeters(radiusSlider.value);
+      radiusSlider.value = String(meters);
+      radiusValue.textContent = formatRadiusMeters(meters);
+    }
+
+    function syncRadiusControlState() {
+      const enabled = enabledInput.checked;
+      radiusSlider.disabled = !enabled;
+    }
 
     function loadAreaNudgeSettingsForm() {
       try {
@@ -243,24 +348,33 @@
           : { ...DEFAULT_AREA_NUDGE_SETTINGS };
 
         enabledInput.checked = settings.enabled !== false;
-        radiusSelect.value = Number(settings.radiusKm) === 0.5 ? "0.5" : "0.2";
+        radiusSlider.value = String(readRadiusMetersFromSettings(settings.radiusKm));
       } catch {
         enabledInput.checked = true;
-        radiusSelect.value = "0.2";
+        radiusSlider.value = String(AREA_NUDGE_RADIUS_MIN_M);
       }
+
+      syncRadiusDisplay();
+      syncRadiusControlState();
     }
 
     function saveAreaNudgeSettingsFromForm() {
+      const meters = normalizeRadiusMeters(radiusSlider.value);
       const settings = {
         enabled: enabledInput.checked,
-        radiusKm: radiusSelect.value === "0.5" ? 0.5 : 0.2
+        radiusKm: meters / 1000
       };
 
       window.localStorage.setItem(AREA_NUDGE_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      syncRadiusDisplay();
+      syncRadiusControlState();
     }
 
     enabledInput.addEventListener("change", saveAreaNudgeSettingsFromForm);
-    radiusSelect.addEventListener("change", saveAreaNudgeSettingsFromForm);
+    radiusSlider.addEventListener("input", () => {
+      syncRadiusDisplay();
+    });
+    radiusSlider.addEventListener("change", saveAreaNudgeSettingsFromForm);
     loadAreaNudgeSettingsForm();
   </script>
 </body>

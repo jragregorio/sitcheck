@@ -270,20 +270,18 @@ body {
 
 .area-nudge-chip {
   position: fixed;
-  top: 62px;
+  top: 12px;
   left: 12px;
   right: 12px;
-  z-index: 29;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 10px 12px;
+  z-index: 31;
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
   border-color: rgba(36, 87, 245, 0.22);
   background: rgba(255, 255, 255, 0.98);
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-12px);
+  transform: translateY(calc(-100% - 16px));
   transition: opacity 220ms ease, transform 220ms ease;
 }
 
@@ -293,28 +291,39 @@ body {
   transform: translateY(0);
 }
 
+.area-nudge-chip.is-instant,
+.hero-panel.is-instant {
+  transition: none;
+}
+
 .area-nudge-chip-text {
-  flex: 1 1 auto;
-  min-width: 0;
   margin: 0;
   color: var(--text);
-  font-size: 0.82rem;
+  font-size: 0.94rem;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.45;
 }
 
-.area-nudge-chip-add {
-  flex: 0 0 auto;
-  min-height: 36px;
-  padding: 0 12px;
-  font-size: 0.88rem;
+.area-nudge-chip-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.area-nudge-chip-dismiss {
-  flex: 0 0 auto;
-  min-height: 36px;
-  padding: 0 12px;
-  font-size: 0.88rem;
+.area-nudge-chip-actions .button {
+  min-height: 40px;
+  flex: 1 1 auto;
+}
+
+.hero-panel.is-hidden-by-area-nudge {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(calc(-100% - 16px));
+}
+
+.hero-panel,
+.hero-panel.is-hidden-by-area-nudge {
+  transition: opacity 220ms ease, transform 220ms ease;
 }
 
 .floating-panel,
@@ -1396,12 +1405,8 @@ h2 {
     margin-bottom: 0;
   }
 
-  .area-nudge-chip {
-    top: 58px;
-  }
-
   .area-nudge-chip-text {
-    font-size: 0.78rem;
+    font-size: 0.88rem;
   }
 
   .stats-panel {
@@ -1607,6 +1612,15 @@ h2 {
     margin-right: 12px;
     margin-bottom: 0;
     margin-left: 0;
+    transition: margin-top 220ms ease;
+  }
+
+  body.map-controls-elevated .leaflet-top.leaflet-right .leaflet-control-map-stack {
+    margin-top: 76px;
+  }
+
+  body.map-controls-nudge .leaflet-top.leaflet-right .leaflet-control-map-stack {
+    margin-top: 148px;
   }
 
   .map-control-group {
@@ -1709,12 +1723,16 @@ h2 {
 }
 
 @media (min-width: 861px) {
+  .hero-panel.is-hidden-by-area-nudge {
+    transform: translateY(calc(-100% - 20px));
+  }
+
   .area-nudge-chip {
     top: 20px;
     left: 50%;
     right: auto;
     width: min(640px, calc(100vw - 40px));
-    transform: translate(-50%, -12px);
+    transform: translate(-50%, calc(-100% - 20px));
   }
 
   .area-nudge-chip.is-visible {

@@ -2,6 +2,17 @@
 
 Version format: **MAJOR.MINOR.PATCH** with PATCH **1–9 only**. When PATCH would hit 10, carry to MINOR (e.g. `1.2.11` → `1.3.1`). Use `npm run bump:version` for releases.
 
+## [1.4.6] - 2026-06-03
+
+### Changed
+- **About → Nearby Suggestions:** toggle switch in the section header (no extra checkbox label), description kept below; search radius is now a **200–500 m** slider with a live meter readout.
+
+## [1.4.5] - 2026-06-03
+
+### Changed
+- Nearby area nudge replaces the top hero bar (slide swap) instead of sitting below it; **Dismiss** / **Add toilet** restores the reduced hero.
+- On mobile, zoom and location controls move up under the compact hero or nudge, and return to the lower position when the hero is expanded.
+
 ## [1.4.4] - 2026-06-03
 
 ### Added

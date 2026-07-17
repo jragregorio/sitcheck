@@ -32,6 +32,8 @@ const SPLASH_FADE_DURATION_MS = 1400;
 const SPLASH_LINE_CYCLE_MS = 2000;
 const HERO_COMPACT_DELAY_MS = 3000;
 const NEARBY_LISTING_RADIUS_KM_DEFAULT = 0.2;
+const AREA_NUDGE_RADIUS_MIN_KM = 0.2;
+const AREA_NUDGE_RADIUS_MAX_KM = 0.5;
 const AREA_NUDGE_SETTINGS_STORAGE_KEY = "sitcheck-area-nudge-settings";
 const AREA_NUDGE_CHECK_INTERVAL_MS = 30000;
 const AREA_NUDGE_MIN_MOVE_KM = 0.05;
@@ -253,6 +255,7 @@ if (hasHiddenSplash) {
   maybeScheduleAppTour();
   scheduleHeroCompactMode();
   syncAreaNudgeMapViewState();
+  updateMapControlLayout();
 }
 
 function bindEvents() {
@@ -333,6 +336,7 @@ function bindEvents() {
 
   window.addEventListener("resize", handleTourResize);
   window.addEventListener("resize", handleHeroCompactResize);
+  window.addEventListener("resize", updateMapControlLayout);
 
   if (elements.heroPanel) {
     elements.heroPanel.addEventListener("click", handleHeroPanelClick);
@@ -783,6 +787,21 @@ function onUserLocationUpdated() {
   queueAreaNudgeEvaluation();
 }
 
+function normalizeAreaNudgeRadiusKm(radiusKm) {
+  const meters = Math.round(Number(radiusKm) * 1000);
+
+  if (!Number.isFinite(meters)) {
+    return NEARBY_LISTING_RADIUS_KM_DEFAULT;
+  }
+
+  const clampedMeters = Math.min(
+    Math.round(AREA_NUDGE_RADIUS_MAX_KM * 1000),
+    Math.max(Math.round(AREA_NUDGE_RADIUS_MIN_KM * 1000), meters)
+  );
+
+  return clampedMeters / 1000;
+}
+
 function loadAreaNudgeSettings() {
   try {
     const raw = window.localStorage.getItem(AREA_NUDGE_SETTINGS_STORAGE_KEY);
@@ -791,11 +810,10 @@ function loadAreaNudgeSettings() {
     }
 
     const parsed = JSON.parse(raw);
-    const radiusKm = Number(parsed.radiusKm);
 
     return {
       enabled: parsed.enabled !== false,
-      radiusKm: radiusKm === 0.5 ? 0.5 : NEARBY_LISTING_RADIUS_KM_DEFAULT
+      radiusKm: normalizeAreaNudgeRadiusKm(parsed.radiusKm)
     };
   } catch {
     return { ...DEFAULT_AREA_NUDGE_SETTINGS };
@@ -1043,8 +1061,18 @@ function showAreaNudge(latitude, longitude) {
     refreshHeroSummary();
   }
 
+  elements.heroPanel?.classList.add("is-hidden-by-area-nudge");
+
+  if (prefersReducedMotion()) {
+    elements.areaNudgeChip.classList.add("is-instant");
+    elements.heroPanel?.classList.add("is-instant");
+  }
+
   elements.areaNudgeChip.hidden = false;
-  elements.areaNudgeChip.classList.add("is-visible");
+  updateMapControlLayout();
+  window.requestAnimationFrame(() => {
+    elements.areaNudgeChip.classList.add("is-visible");
+  });
 }
 
 function hideAreaNudge(options = {}) {
@@ -1057,7 +1085,18 @@ function hideAreaNudge(options = {}) {
   const wasVisible = areaNudgeVisible;
   areaNudgeVisible = false;
   elements.areaNudgeChip.classList.remove("is-visible");
-  elements.areaNudgeChip.hidden = true;
+  elements.heroPanel?.classList.remove("is-hidden-by-area-nudge", "is-instant");
+  elements.areaNudgeChip.classList.remove("is-instant");
+  updateMapControlLayout();
+
+  const settleMs = prefersReducedMotion() ? 0 : 240;
+
+  window.setTimeout(() => {
+    if (!areaNudgeVisible) {
+      elements.areaNudgeChip.hidden = true;
+    }
+    updateMapControlLayout();
+  }, settleMs);
 
   if (wasVisible && recordCooldown && hasValidUserLocation()) {
     markAreaNudgeShown(userLocation.latitude, userLocation.longitude);
@@ -1066,6 +1105,10 @@ function hideAreaNudge(options = {}) {
   if (isMobileViewport()) {
     ensureHeroCompactMode();
   }
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 function openContributeFromAreaNudge() {
@@ -1484,6 +1527,7 @@ function ensureHeroCompactMode() {
   clearHeroCompactTimer();
   elements.heroPanel.classList.add("is-compact");
   refreshHeroSummary();
+  updateMapControlLayout();
 }
 
 function clearHeroCompactTimer() {
@@ -1500,10 +1544,12 @@ function scheduleHeroCompactMode() {
 
   if (!elements.heroPanel || !isMobileViewport()) {
     elements.heroPanel?.classList.remove("is-compact");
+    updateMapControlLayout();
     return;
   }
 
   elements.heroPanel.classList.remove("is-compact");
+  updateMapControlLayout();
 
   heroCompactTimeoutId = window.setTimeout(() => {
     heroCompactTimeoutId = 0;
@@ -1516,6 +1562,7 @@ function scheduleHeroCompactMode() {
     refreshHeroSummary();
     syncAreaNudgeMapViewState();
     queueAreaNudgeEvaluation();
+    updateMapControlLayout();
   }, HERO_COMPACT_DELAY_MS);
 }
 
@@ -1527,12 +1574,15 @@ function handleHeroCompactResize() {
   if (!isMobileViewport()) {
     clearHeroCompactTimer();
     elements.heroPanel.classList.remove("is-compact");
+    updateMapControlLayout();
     return;
   }
 
   if (!elements.heroPanel.classList.contains("is-compact")) {
     scheduleHeroCompactMode();
   }
+
+  updateMapControlLayout();
 }
 
 function handleHeroPanelClick() {
@@ -1544,6 +1594,7 @@ function handleHeroPanelClick() {
 
   elements.heroPanel.classList.remove("is-compact");
   scheduleHeroCompactMode();
+  updateMapControlLayout();
 }
 
 function getVisibleListings() {
@@ -2257,6 +2308,21 @@ function getZoomControlPosition() {
   return isMobileViewport() ? "topright" : "bottomleft";
 }
 
+function updateMapControlLayout() {
+  if (!isMobileViewport()) {
+    document.body.classList.remove("map-controls-elevated", "map-controls-nudge");
+    return;
+  }
+
+  document.body.classList.toggle("map-controls-nudge", areaNudgeVisible);
+
+  const isCompactHeroVisible = Boolean(
+    elements.heroPanel?.classList.contains("is-compact") &&
+    !elements.heroPanel.classList.contains("is-hidden-by-area-nudge")
+  );
+  document.body.classList.toggle("map-controls-elevated", isCompactHeroVisible && !areaNudgeVisible);
+}
+
 function syncMapControls(force = false) {
   const nextPosition = getZoomControlPosition();
 
@@ -2270,6 +2336,7 @@ function syncMapControls(force = false) {
 
   mapControls = createMapControls(nextPosition);
   mapControlsPosition = nextPosition;
+  updateMapControlLayout();
 }
 
 function createMapControls(position) {
