@@ -2,6 +2,21 @@
 
 Version format: **MAJOR.MINOR.PATCH** with PATCH **1–9 only**. When PATCH would hit 10, carry to MINOR (e.g. `1.2.11` → `1.3.1`). Use `npm run bump:version` for releases.
 
+## [1.5.5] - 2026-07-17
+
+### Added
+- **App menu:** the map’s former coffee shortcut is now a Menu sheet with clear links to **Options** and **About SitCheck**.
+- **Options page:** Nearby Suggestions, search radius, and Contribution Reminders settings now live on a dedicated page.
+
+### Changed
+- **About:** removed settings and legacy settings code for a shorter, cleaner app-information page.
+- Reminder guidance now points users to **Menu → Options**.
+
+## [1.5.4] - 2026-07-17
+
+### Changed
+- **About:** replaced the visible Privacy Policy button with a full-width light-green **Leave a Review** action that opens the Play Store listing; Privacy Policy page remains available by URL.
+
 ## [1.5.3] - 2026-07-17
 
 ### Fixed

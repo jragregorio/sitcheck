@@ -167,6 +167,8 @@ const elements = {
   splashOverlay: document.querySelector("#app-splash"),
   toast: document.querySelector("#toast"),
   aboutButton: document.querySelector(".mobile-about-button"),
+  appMenu: document.querySelector("#app-menu"),
+  appMenuCloseButtons: document.querySelectorAll("[data-app-menu-close]"),
   locateButton: null,
   form: document.querySelector("#listing-form"),
   nameInput: document.querySelector('input[name="name"]'),
@@ -327,10 +329,24 @@ function bindEvents() {
     });
   });
 
-  document.querySelectorAll('a[href="about.html"], a[href="admin.html"]').forEach((link) => {
+  document.querySelectorAll('a[href="about.html"], a[href="options.html"], a[href="admin.html"]').forEach((link) => {
     link.addEventListener("click", () => {
       saveReturnMapView();
     });
+  });
+
+  if (elements.aboutButton) {
+    elements.aboutButton.addEventListener("click", openAppMenu);
+  }
+
+  elements.appMenuCloseButtons.forEach((button) => {
+    button.addEventListener("click", closeAppMenu);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && elements.appMenu?.hidden === false) {
+      closeAppMenu();
+    }
   });
 
   bindAccuracyInteractions();
@@ -2498,6 +2514,28 @@ function updateAboutButtonVisibility() {
 
   const shouldHideOnMobile = isMobileViewport() && Boolean(state.ui.mobileTab);
   elements.aboutButton.hidden = shouldHideOnMobile;
+}
+
+function openAppMenu() {
+  if (!elements.appMenu) {
+    return;
+  }
+
+  elements.appMenu.hidden = false;
+  elements.aboutButton?.setAttribute("aria-expanded", "true");
+  document.body.classList.add("app-menu-open");
+  elements.appMenu.querySelector(".app-menu-close")?.focus();
+}
+
+function closeAppMenu() {
+  if (!elements.appMenu) {
+    return;
+  }
+
+  elements.appMenu.hidden = true;
+  elements.aboutButton?.setAttribute("aria-expanded", "false");
+  document.body.classList.remove("app-menu-open");
+  elements.aboutButton?.focus();
 }
 
 function updateDesktopUI() {

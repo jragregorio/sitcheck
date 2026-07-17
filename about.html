@@ -25,24 +25,23 @@
     body {
       margin: 0;
       min-height: 100vh;
+      padding: 20px;
       background: linear-gradient(180deg, #eef4ff 0%, #f8fbff 100%);
       color: var(--text);
-      padding: 20px;
     }
 
     .shell {
+      display: grid;
       max-width: 760px;
       margin: 0 auto;
-      display: grid;
-      gap: 16px;
     }
 
     .card {
+      padding: 22px;
       border: 1px solid var(--line);
       border-radius: 20px;
       background: var(--panel);
       box-shadow: 0 18px 40px rgba(19, 34, 56, 0.12);
-      padding: 22px;
     }
 
     .eyebrow {
@@ -65,36 +64,40 @@
       line-height: 1.6;
     }
 
-    .stack {
+    .about-copy {
       display: grid;
       gap: 10px;
-      margin-top: 12px;
+    }
+
+    .release-row {
+      margin-top: 18px;
+    }
+
+    .release-row strong {
+      color: var(--text);
     }
 
     .button-row {
-      margin-top: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
-      flex-wrap: wrap;
+      margin-top: 20px;
     }
 
     .button {
       display: inline-flex;
-      flex: 1 1 0;
+      min-height: 44px;
+      padding: 0 14px;
       align-items: center;
       justify-content: center;
-      min-height: 40px;
-      padding: 0 14px;
       border: 1px solid var(--line);
       border-radius: 999px;
-      text-decoration: none;
+      background: #fff;
       color: var(--text);
       font-size: 1rem;
       font-weight: 600;
       line-height: 1;
-      background: #fff;
+      text-decoration: none;
     }
 
     .support-button {
@@ -103,12 +106,27 @@
       color: #fff;
     }
 
+    .review-button {
+      grid-column: 1 / -1;
+      min-height: 46px;
+      border-color: #0f8a5f;
+      background: #e6f8ef;
+      color: #0b6b4a;
+      font-size: 1.02rem;
+      box-shadow: 0 8px 18px rgba(15, 138, 95, 0.18);
+    }
+
+    .review-button:hover {
+      border-color: #0b6b4a;
+      background: #d4f3e5;
+    }
+
     .back-button {
-      flex-basis: 100%;
-      background: var(--primary);
-      border-color: transparent;
-      color: #fff;
+      grid-column: 1 / -1;
       min-height: 48px;
+      border-color: transparent;
+      background: var(--primary);
+      color: #fff;
       font-size: 1.05rem;
       box-shadow: 0 8px 20px rgba(36, 87, 245, 0.28);
     }
@@ -117,141 +135,23 @@
       background: #153bb6;
     }
 
-    .release-text {
-      color: var(--muted);
-    }
-
-    .settings-card h2 {
-      margin: 0;
-      font-size: 1.2rem;
-      color: var(--text);
-    }
-
-    .settings-heading-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-
-    .settings-description {
-      margin: 0 0 18px;
-    }
-
-    .setting-row {
-      display: grid;
-      gap: 10px;
-      margin-bottom: 0;
-      font-weight: 600;
-      font-size: 0.95rem;
-      color: var(--text);
-    }
-
-    .radius-setting-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    #area-nudge-radius-value {
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--primary);
-    }
-
-    .radius-slider {
-      width: 100%;
-      height: 36px;
-      margin: 0;
-      accent-color: var(--primary);
-      cursor: pointer;
-    }
-
-    .radius-slider:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    .toggle-switch {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      flex-shrink: 0;
-      cursor: pointer;
-    }
-
-    .toggle-input {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-
-    .toggle-track {
-      display: block;
-      width: 52px;
-      height: 30px;
-      border-radius: 999px;
-      background: rgba(95, 111, 134, 0.32);
-      transition: background 180ms ease;
-      position: relative;
-    }
-
-    .toggle-track::after {
-      content: "";
-      position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(19, 34, 56, 0.18);
-      transition: transform 180ms ease;
-    }
-
-    .toggle-input:checked + .toggle-track {
-      background: var(--primary);
-    }
-
-    .toggle-input:checked + .toggle-track::after {
-      transform: translateX(22px);
-    }
-
-    .toggle-input:focus-visible + .toggle-track {
-      outline: 2px solid rgba(36, 87, 245, 0.35);
-      outline-offset: 2px;
-    }
-
     @media (max-width: 860px) {
       body {
-        display: grid;
-        place-items: center;
         padding: 16px;
       }
 
-      .shell {
-        width: 100%;
-        margin: 0;
+      .button-row {
+        grid-template-columns: 1fr;
       }
 
-      .button-row {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 12px;
+      .review-button,
+      .back-button {
+        grid-column: auto;
       }
 
       .button {
         width: 100%;
         min-height: 46px;
-        padding: 0 16px;
       }
     }
   </style>
@@ -261,218 +161,28 @@
     <section class="card">
       <p class="eyebrow">SitCheck</p>
       <h1>About</h1>
-      <p>Find nearby toilets before you need one, with quick checks for bidet availability, cleanliness, and access fees.</p>
-      <div class="stack">
+      <div class="about-copy">
+        <p>Find nearby toilets before you need one, with quick checks for bidet availability, cleanliness, and access fees.</p>
         <p>Built for fast on-the-go restroom decisions with community-submitted listings.</p>
-        <br>
-        <br>
-        <br>
-        <p>
-          <strong>Made by JRAG</strong> -
-          <span class="release-text">release v<span id="app-version">1.5.3</span></span>
-        </p>
       </div>
-      <br>
+      <p class="release-row">
+        <strong>Made by JRAG</strong> -
+        release v<span id="app-version">1.5.5</span>
+      </p>
       <div class="button-row">
         <a class="button support-button" href="https://ko-fi.com/jragregorio" target="_blank" rel="noopener noreferrer">☕ Support Me</a>
         <a class="button" href="admin.html">Moderator</a>
         <a class="button" href="index.html?tour=1">Show App Tour</a>
-        <a class="button" href="privacy-policy.html">Privacy Policy</a>
+        <a class="button" href="options.html">Options</a>
+        <a
+          class="button review-button"
+          href="https://play.google.com/store/apps/details?id=com.sitcheck.app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >Leave a Review</a>
         <a class="button back-button" href="index.html">Back to Map</a>
       </div>
     </section>
-
-    <section class="card settings-card">
-      <div class="settings-heading-row">
-        <h2>Nearby Suggestions</h2>
-        <label class="toggle-switch" for="area-nudge-enabled">
-          <input
-            class="toggle-input"
-            type="checkbox"
-            id="area-nudge-enabled"
-            checked
-            aria-label="Enable nearby suggestions"
-          >
-          <span class="toggle-track" aria-hidden="true"></span>
-        </label>
-      </div>
-      <p class="settings-description">Control when SitCheck suggests adding a listing because none are close by.</p>
-      <label class="setting-row radius-setting">
-        <span class="radius-setting-header">
-          <span>Search radius</span>
-          <span id="area-nudge-radius-value">200 m</span>
-        </span>
-        <input
-          class="radius-slider"
-          type="range"
-          id="area-nudge-radius"
-          min="200"
-          max="500"
-          step="10"
-          value="200"
-          aria-label="Nearby listing search radius in meters"
-        >
-      </label>
-    </section>
-
-    <section class="card settings-card">
-      <div class="settings-heading-row">
-        <h2>Contribution reminders</h2>
-        <label class="toggle-switch" for="contribution-reminder-enabled">
-          <input
-            class="toggle-input"
-            type="checkbox"
-            id="contribution-reminder-enabled"
-            aria-label="Enable contribution reminders"
-          >
-          <span class="toggle-track" aria-hidden="true"></span>
-        </label>
-      </div>
-      <p class="settings-description">
-        On by default. SitCheck may remind you after about 12 hours away. Turn this off here anytime.
-      </p>
-      <p id="contribution-reminder-status" class="settings-description" hidden></p>
-    </section>
   </main>
-
-  <script src="contribution-reminders.js"></script>
-  <script>
-    const AREA_NUDGE_SETTINGS_STORAGE_KEY = "sitcheck-area-nudge-settings";
-    const AREA_NUDGE_RADIUS_MIN_M = 200;
-    const AREA_NUDGE_RADIUS_MAX_M = 500;
-    const DEFAULT_AREA_NUDGE_SETTINGS = {
-      enabled: true,
-      radiusKm: 0.2
-    };
-
-    const enabledInput = document.querySelector("#area-nudge-enabled");
-    const radiusSlider = document.querySelector("#area-nudge-radius");
-    const radiusValue = document.querySelector("#area-nudge-radius-value");
-    const contributionReminderInput = document.querySelector("#contribution-reminder-enabled");
-    const contributionReminderStatus = document.querySelector("#contribution-reminder-status");
-    const reminders = window.SitCheckContributionReminders;
-
-    function normalizeRadiusMeters(meters) {
-      const rounded = Math.round(Number(meters) || AREA_NUDGE_RADIUS_MIN_M);
-      return Math.min(AREA_NUDGE_RADIUS_MAX_M, Math.max(AREA_NUDGE_RADIUS_MIN_M, rounded));
-    }
-
-    function formatRadiusMeters(meters) {
-      return `${normalizeRadiusMeters(meters)} m`;
-    }
-
-    function readRadiusMetersFromSettings(radiusKm) {
-      const meters = Math.round(Number(radiusKm) * 1000);
-      return normalizeRadiusMeters(meters);
-    }
-
-    function syncRadiusDisplay() {
-      const meters = normalizeRadiusMeters(radiusSlider.value);
-      radiusSlider.value = String(meters);
-      radiusValue.textContent = formatRadiusMeters(meters);
-    }
-
-    function syncRadiusControlState() {
-      const enabled = enabledInput.checked;
-      radiusSlider.disabled = !enabled;
-    }
-
-    function setContributionReminderStatus(message, isError = false) {
-      if (!contributionReminderStatus) {
-        return;
-      }
-
-      if (!message) {
-        contributionReminderStatus.hidden = true;
-        contributionReminderStatus.textContent = "";
-        return;
-      }
-
-      contributionReminderStatus.hidden = false;
-      contributionReminderStatus.textContent = message;
-      contributionReminderStatus.style.color = isError ? "#9a1d35" : "var(--muted)";
-    }
-
-    function loadAreaNudgeSettingsForm() {
-      try {
-        const raw = window.localStorage.getItem(AREA_NUDGE_SETTINGS_STORAGE_KEY);
-        const settings = raw
-          ? { ...DEFAULT_AREA_NUDGE_SETTINGS, ...JSON.parse(raw) }
-          : { ...DEFAULT_AREA_NUDGE_SETTINGS };
-
-        enabledInput.checked = settings.enabled !== false;
-        radiusSlider.value = String(readRadiusMetersFromSettings(settings.radiusKm));
-      } catch {
-        enabledInput.checked = true;
-        radiusSlider.value = String(AREA_NUDGE_RADIUS_MIN_M);
-      }
-
-      syncRadiusDisplay();
-      syncRadiusControlState();
-    }
-
-    function saveAreaNudgeSettingsFromForm() {
-      const meters = normalizeRadiusMeters(radiusSlider.value);
-      const settings = {
-        enabled: enabledInput.checked,
-        radiusKm: meters / 1000
-      };
-
-      window.localStorage.setItem(AREA_NUDGE_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-      syncRadiusDisplay();
-      syncRadiusControlState();
-    }
-
-    function loadContributionReminderSettingsForm() {
-      if (!contributionReminderInput || !reminders) {
-        return;
-      }
-
-      contributionReminderInput.checked = reminders.isEnabled();
-
-      if (!reminders.isNativePlatform()) {
-        setContributionReminderStatus("Available in the Android app after install.");
-      } else {
-        setContributionReminderStatus("");
-      }
-    }
-
-    async function handleContributionReminderToggle() {
-      if (!contributionReminderInput || !reminders) {
-        return;
-      }
-
-      contributionReminderInput.disabled = true;
-      setContributionReminderStatus("");
-
-      try {
-        if (contributionReminderInput.checked) {
-          const result = await reminders.enable();
-          contributionReminderInput.checked = Boolean(result.ok);
-          setContributionReminderStatus(result.message || "", !result.ok);
-        } else {
-          await reminders.disable();
-          setContributionReminderStatus("");
-        }
-      } finally {
-        contributionReminderInput.disabled = false;
-      }
-    }
-
-    enabledInput.addEventListener("change", saveAreaNudgeSettingsFromForm);
-    radiusSlider.addEventListener("input", () => {
-      syncRadiusDisplay();
-    });
-    radiusSlider.addEventListener("change", saveAreaNudgeSettingsFromForm);
-
-    if (contributionReminderInput) {
-      contributionReminderInput.addEventListener("change", () => {
-        void handleContributionReminderToggle();
-      });
-    }
-
-    loadAreaNudgeSettingsForm();
-    loadContributionReminderSettingsForm();
-  </script>
 </body>
 </html>

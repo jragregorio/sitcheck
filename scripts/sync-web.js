@@ -7,6 +7,7 @@ const filesToCopy = [
   "index.html",
   "admin.html",
   "about.html",
+  "options.html",
   "privacy-policy.html",
   "CHANGELOG.md",
   "app.js",

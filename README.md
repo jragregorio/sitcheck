@@ -55,14 +55,19 @@ npm run cap:open:android
 
 ### Contribution reminders (Android)
 
-System notifications remind users to add listings after about **12 hours** away from the app. Reminders are **on by default**; turn them off in **About → Contribution reminders**.
+System notifications remind users to add listings after about **12 hours** away from the app. Reminders are **on by default**; turn them off in **Menu → Options → Contribution Reminders**.
+
+The map Menu separates app preferences from app information:
+
+- **Options** — Nearby Suggestions, search radius, and Contribution Reminders
+- **About SitCheck** — version, support, moderator access, app tour, and Play Store review
 
 1. Install/run the Android build (not the browser-only page).
 2. Grant notification permission when prompted (required for reminders to schedule).
 3. Leave the app (background or close). A local reminder is scheduled for ~12 hours later.
 4. Opening SitCheck again cancels any pending reminder. Tapping a delivered reminder opens the map and **Add toilet**.
 
-To disable: **About → Contribution reminders** → turn the toggle **off**. Nearby Suggestions (in-app chip) is separate and does not require this toggle.
+To disable: **Menu → Options → Contribution Reminders** → turn the toggle **off**. Nearby Suggestions (in-app chip) is configured on the same Options page.
 
 ### Listing accuracy (Yes / No)
 

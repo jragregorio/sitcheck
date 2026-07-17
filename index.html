@@ -345,9 +345,40 @@
     </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
-    <a class="mobile-about-button" href="about.html" aria-label="Open about page" title="About SitCheck">
-      <span aria-hidden="true">☕</span>
-    </a>
+    <button
+      id="app-menu-button"
+      class="mobile-about-button"
+      type="button"
+      aria-label="Open app menu"
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      title="SitCheck menu"
+    >
+      <span aria-hidden="true">☰</span>
+    </button>
+
+    <div id="app-menu" class="app-menu" hidden>
+      <button class="app-menu-backdrop" type="button" data-app-menu-close aria-label="Close app menu"></button>
+      <section class="app-menu-card" role="dialog" aria-modal="true" aria-labelledby="app-menu-title">
+        <div class="app-menu-heading">
+          <div>
+            <p class="section-kicker">SitCheck</p>
+            <h2 id="app-menu-title">Menu</h2>
+          </div>
+          <button class="app-menu-close" type="button" data-app-menu-close aria-label="Close app menu">×</button>
+        </div>
+        <nav class="app-menu-links" aria-label="SitCheck menu">
+          <a class="app-menu-link" href="options.html">
+            <strong>Options</strong>
+            <span>Nearby suggestions and contribution reminders</span>
+          </a>
+          <a class="app-menu-link" href="about.html">
+            <strong>About SitCheck</strong>
+            <span>App details, support, tour, and reviews</span>
+          </a>
+        </nav>
+      </section>
+    </div>
   </div>
 
   <template id="toilet-card-template">

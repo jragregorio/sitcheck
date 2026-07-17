@@ -301,7 +301,7 @@
 
     markContributionReminderNoticeSeen();
     showToastFn(
-      "Reminders on (~12h). Disable anytime in About.",
+      "Reminders on (~12h). Disable anytime in Options.",
       "success"
     );
   }

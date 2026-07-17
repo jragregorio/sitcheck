@@ -194,6 +194,96 @@ body {
   display: none;
 }
 
+.app-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  align-items: end;
+  padding: 16px;
+  pointer-events: auto;
+}
+
+.app-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(19, 34, 56, 0.48);
+  backdrop-filter: blur(3px);
+}
+
+.app-menu-card {
+  position: relative;
+  z-index: 1;
+  width: min(440px, 100%);
+  margin: 0 auto;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: 0 24px 60px rgba(19, 34, 56, 0.26);
+}
+
+.app-menu-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.app-menu-heading h2 {
+  margin: 2px 0 0;
+  font-size: 1.35rem;
+}
+
+.app-menu-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.app-menu-links {
+  display: grid;
+  gap: 10px;
+}
+
+.app-menu-link {
+  display: grid;
+  gap: 4px;
+  min-height: 72px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.app-menu-link strong {
+  font-size: 1rem;
+}
+
+.app-menu-link span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+body.app-menu-open {
+  overflow: hidden;
+}
+
 [hidden] {
   display: none !important;
 }
