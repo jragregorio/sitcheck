@@ -42,6 +42,8 @@ const AREA_NUDGE_COOLDOWN_STORAGE_KEY = "sitcheck-area-nudge-cooldown";
 const AREA_NUDGE_STATIONARY_MS = 30000;
 const AREA_NUDGE_STATIONARY_MAX_MOVE_KM = 0.03;
 const AREA_NUDGE_MAP_ACTIVE_MS = 12000;
+const ACCURACY_VOTES_STORAGE_KEY = "sitcheck-accuracy-votes";
+const ACCURACY_VOTE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_AREA_NUDGE_SETTINGS = {
   enabled: true,
   radiusKm: NEARBY_LISTING_RADIUS_KM_DEFAULT
@@ -239,26 +241,32 @@ const tourState = {
 
 initializeSplashVisibility();
 initializeSplashLineRotation();
-bindEvents();
-initMap();
-syncDataModeUI();
-render();
-void initContributionReminderRuntime();
 
-if (supabaseClient) {
-  void initializeRemoteListings();
-} else {
+try {
+  bindEvents();
+  initMap();
+  syncDataModeUI();
+  render();
+  void initContributionReminderRuntime();
+
+  if (supabaseClient) {
+    void initializeRemoteListings();
+  } else {
+    scheduleSplashHide();
+    scheduleAutoLocateUser();
+  }
+
+  if (hasHiddenSplash) {
+    maybeScheduleAppTour();
+    maybeShowContributionReminderNotice();
+    maybeOpenAddFromQuery();
+    scheduleHeroCompactMode();
+    syncAreaNudgeMapViewState();
+    updateMapControlLayout();
+  }
+} catch (error) {
+  console.error("SitCheck startup failed:", error);
   scheduleSplashHide();
-  scheduleAutoLocateUser();
-}
-
-if (hasHiddenSplash) {
-  maybeScheduleAppTour();
-  maybeShowContributionReminderNotice();
-  maybeOpenAddFromQuery();
-  scheduleHeroCompactMode();
-  syncAreaNudgeMapViewState();
-  updateMapControlLayout();
 }
 
 function bindEvents() {
@@ -325,6 +333,8 @@ function bindEvents() {
     });
   });
 
+  bindAccuracyInteractions();
+
   if (elements.tourSkipButton) {
     elements.tourSkipButton.addEventListener("click", () => {
       completeAppTour();
@@ -357,33 +367,39 @@ function bindEvents() {
     });
   }
 
-  elements.focusPinButton.addEventListener("click", () => {
-    if (!map || !contributionMarker) {
-      return;
-    }
+  if (elements.focusPinButton) {
+    elements.focusPinButton.addEventListener("click", () => {
+      if (!map || !contributionMarker) {
+        return;
+      }
 
-    if (isMobileViewport() && state.ui.mobileTab !== "add") {
-      setMobileTab("add");
-    }
+      if (isMobileViewport() && state.ui.mobileTab !== "add") {
+        setMobileTab("add");
+      }
 
-    focusContributionPin();
-  });
-
-  elements.resetPinButton.addEventListener("click", () => {
-    if (!contributionMarker) {
-      return;
-    }
-
-    elements.pinStatus.textContent = "Pin reset near the center of the current map view.";
-    placeContributionPinFromCurrentView({
-      focusAfterPlacement: true
+      focusContributionPin();
     });
-  });
+  }
 
-  elements.searchInput.addEventListener("input", (event) => {
-    state.filters.search = event.target.value.trim().toLowerCase();
-    render();
-  });
+  if (elements.resetPinButton) {
+    elements.resetPinButton.addEventListener("click", () => {
+      if (!contributionMarker) {
+        return;
+      }
+
+      elements.pinStatus.textContent = "Pin reset near the center of the current map view.";
+      placeContributionPinFromCurrentView({
+        focusAfterPlacement: true
+      });
+    });
+  }
+
+  if (elements.searchInput) {
+    elements.searchInput.addEventListener("input", (event) => {
+      state.filters.search = event.target.value.trim().toLowerCase();
+      render();
+    });
+  }
 
   elements.bidetFilter.addEventListener("change", (event) => {
     state.filters.bidet = event.target.value;
@@ -448,7 +464,7 @@ function bindEvents() {
         syncPressureFieldVisibility();
         elements.pinStatus.textContent = "Submission sent for review. Thanks for contributing.";
         setHeroSummary("Contribution submitted for review.");
-        showToast("Submission sent for review. Thanks for contributing.", "success");
+        showToast("Submitted for review. Thanks!", "success");
         closeContributePanel();
       } catch (error) {
         elements.pinStatus.textContent = error.message || "Could not submit contribution right now.";
@@ -1240,7 +1256,7 @@ function showToast(message, variant = "success") {
   }
 
   window.clearTimeout(toastTimeoutId);
-  elements.toast.textContent = message;
+  elements.toast.textContent = String(message || "").replace(/\s+/g, " ").trim();
   elements.toast.classList.remove("is-success", "is-error");
   elements.toast.classList.add("is-visible", variant === "error" ? "is-error" : "is-success");
 
@@ -1332,7 +1348,14 @@ function renderCards(listings) {
       fragment.querySelector(".pressure-row").appendChild(buildPressureBadge(listing.pressureLevel));
     }
 
-    card.addEventListener("click", () => {
+    card.dataset.listingId = String(listing.id);
+    syncAccuracySection(fragment.querySelector(".accuracy-section"), listing);
+
+    card.addEventListener("click", (event) => {
+      if (event.target.closest(".accuracy-section")) {
+        return;
+      }
+
       focusListingOnMap(listing);
     });
 
@@ -1710,7 +1733,13 @@ async function initializeRemoteListings() {
     state.ui.remoteError = error.message || "Could not load approved listings from Supabase.";
   } finally {
     state.ui.isLoadingListings = false;
-    render();
+
+    try {
+      render();
+    } catch (renderError) {
+      console.error("Failed to render listings after remote load:", renderError);
+    }
+
     scheduleSplashHide();
     scheduleAutoLocateUser();
     queueAreaNudgeEvaluation();
@@ -1835,15 +1864,26 @@ function setNextSplashLine() {
 }
 
 async function fetchSupabaseListings() {
-  const { data, error } = await supabaseClient
+  let data;
+  let error;
+
+  ({ data, error } = await supabaseClient
     .from(SUPABASE_TABLES.toilets)
-    .select("name, location_text, latitude, longitude, has_bidet, has_tissue, cleanliness, pressure_level, payment_required, fee, notes");
+    .select("id, name, location_text, latitude, longitude, has_bidet, has_tissue, cleanliness, pressure_level, payment_required, fee, notes, confirm_count, last_confirmed_at, inaccurate_count"));
+
+  // Fallback if accuracy columns are not applied yet in Supabase.
+  if (error) {
+    ({ data, error } = await supabaseClient
+      .from(SUPABASE_TABLES.toilets)
+      .select("id, name, location_text, latitude, longitude, has_bidet, has_tissue, cleanliness, pressure_level, payment_required, fee, notes"));
+  }
 
   if (error) {
     throw new Error("Could not load approved listings from Supabase.");
   }
 
   return (data || []).map((listing, index) => normalizeListing({
+    id: listing.id,
     name: listing.name,
     location: listing.location_text,
     latitude: listing.latitude,
@@ -1854,7 +1894,10 @@ async function fetchSupabaseListings() {
     pressureLevel: listing.pressure_level,
     paymentRequired: listing.payment_required,
     fee: listing.fee,
-    notes: listing.notes
+    notes: listing.notes,
+    confirmCount: listing.confirm_count,
+    lastConfirmedAt: listing.last_confirmed_at,
+    inaccurateCount: listing.inaccurate_count
   }, index));
 }
 
@@ -1916,6 +1959,378 @@ function buildTag(text, warning = false) {
   return tag;
 }
 
+function canShowListingAccuracy(listing) {
+  if (!listing || listing.id == null || listing.id === "") {
+    return false;
+  }
+
+  if (isUsingSupabase()) {
+    return true;
+  }
+
+  return String(listing.id).startsWith("local-");
+}
+
+function loadAccuracyVotes() {
+  try {
+    const raw = window.localStorage.getItem(ACCURACY_VOTES_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveAccuracyVotes(votes) {
+  try {
+    window.localStorage.setItem(ACCURACY_VOTES_STORAGE_KEY, JSON.stringify(votes));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function getAccuracyVoteState(listingId) {
+  const votes = loadAccuracyVotes();
+  const entry = votes[String(listingId)];
+
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+
+  return {
+    at: Number(entry.at) || 0,
+    accurate: entry.accurate === true
+  };
+}
+
+function isAccuracyCooldownActive(listingId) {
+  const voteState = getAccuracyVoteState(listingId);
+
+  if (!voteState || !voteState.at) {
+    return false;
+  }
+
+  return Date.now() - voteState.at < ACCURACY_VOTE_COOLDOWN_MS;
+}
+
+function markAccuracyVote(listingId, isAccurate) {
+  const votes = loadAccuracyVotes();
+  votes[String(listingId)] = {
+    at: Date.now(),
+    accurate: Boolean(isAccurate)
+  };
+  saveAccuracyVotes(votes);
+}
+
+function findListingById(listingId) {
+  return state.listings.find((listing) => String(listing.id) === String(listingId)) || null;
+}
+
+function applyAccuracyResultToListing(listingId, result) {
+  const listing = findListingById(listingId);
+
+  if (!listing || !result) {
+    return null;
+  }
+
+  listing.confirmCount = Math.max(0, Number(result.confirmCount ?? result.confirm_count) || 0);
+  listing.inaccurateCount = Math.max(0, Number(result.inaccurateCount ?? result.inaccurate_count) || 0);
+  listing.lastConfirmedAt = result.lastConfirmedAt ?? result.last_confirmed_at ?? listing.lastConfirmedAt;
+
+  if (!isUsingSupabase()) {
+    persistListings();
+  }
+
+  return listing;
+}
+
+function formatRelativeTime(value) {
+  const timestamp = new Date(value).getTime();
+
+  if (!Number.isFinite(timestamp)) {
+    return "";
+  }
+
+  const diffMs = Date.now() - timestamp;
+  const diffMinutes = Math.max(1, Math.round(diffMs / 60000));
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes} min ago`;
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+
+  if (diffHours < 48) {
+    return `${diffHours} hr ago`;
+  }
+
+  const diffDays = Math.round(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+}
+
+function getAccuracyStatusMessage(isAccurate) {
+  return isAccurate ? "Thanks — marked accurate" : "Thanks — we noted this";
+}
+
+function getAccuracyMetaMessage(listing) {
+  if (!listing.lastConfirmedAt || listing.confirmCount <= 0) {
+    return "";
+  }
+
+  return `Last confirmed ${formatRelativeTime(listing.lastConfirmedAt)}`;
+}
+
+function getAccuracyCountsMessage(listing) {
+  const yesCount = Math.max(0, Number(listing.confirmCount) || 0);
+  const noCount = Math.max(0, Number(listing.inaccurateCount) || 0);
+  return `Accuracy feedback: ${yesCount} Yes · ${noCount} No`;
+}
+
+function buildAccuracyBlockMarkup(listing) {
+  if (!canShowListingAccuracy(listing)) {
+    return "";
+  }
+
+  const listingId = escapeHtml(String(listing.id));
+  const voteState = getAccuracyVoteState(listing.id);
+  const cooldownActive = isAccuracyCooldownActive(listing.id);
+  const metaMessage = escapeHtml(getAccuracyMetaMessage(listing));
+
+  if (cooldownActive && voteState) {
+    return `
+      <section class="accuracy-section accuracy-section-popup" aria-label="Listing accuracy feedback">
+        <p class="accuracy-question">Listing still accurate?</p>
+        <p class="accuracy-status">${escapeHtml(getAccuracyStatusMessage(voteState.accurate))}</p>
+        ${metaMessage ? `<p class="accuracy-meta">${metaMessage}</p>` : ""}
+      </section>
+    `;
+  }
+
+  return `
+    <section class="accuracy-section accuracy-section-popup" aria-label="Listing accuracy feedback">
+      <p class="accuracy-question">Listing still accurate?</p>
+      <div class="accuracy-actions" role="group" aria-label="Confirm listing accuracy">
+        <button type="button" class="button secondary accuracy-btn" data-accuracy="yes" data-toilet-id="${listingId}">Yes</button>
+        <button type="button" class="button secondary accuracy-btn" data-accuracy="no" data-toilet-id="${listingId}">No</button>
+      </div>
+      ${metaMessage ? `<p class="accuracy-meta">${metaMessage}</p>` : ""}
+    </section>
+  `;
+}
+
+function syncAccuracySection(section, listing) {
+  if (!section) {
+    return;
+  }
+
+  if (!canShowListingAccuracy(listing)) {
+    section.hidden = true;
+    return;
+  }
+
+  section.hidden = false;
+
+  const actions = section.querySelector(".accuracy-actions");
+  const status = section.querySelector(".accuracy-status");
+  const meta = section.querySelector(".accuracy-meta");
+  const counts = section.querySelector(".accuracy-counts");
+  const buttons = section.querySelectorAll(".accuracy-btn");
+  const voteState = getAccuracyVoteState(listing.id);
+  const cooldownActive = isAccuracyCooldownActive(listing.id);
+  const metaMessage = getAccuracyMetaMessage(listing);
+  const isCardSection = !section.classList.contains("accuracy-section-popup");
+
+  if (isCardSection && counts) {
+    counts.hidden = false;
+    counts.textContent = getAccuracyCountsMessage(listing);
+  }
+
+  if (cooldownActive && voteState) {
+    if (actions) {
+      actions.hidden = true;
+    }
+
+    if (status) {
+      status.hidden = false;
+      status.textContent = getAccuracyStatusMessage(voteState.accurate);
+    }
+  } else {
+    if (actions) {
+      actions.hidden = false;
+    }
+
+    if (status) {
+      status.hidden = true;
+      status.textContent = "";
+    }
+
+    buttons.forEach((button) => {
+      button.disabled = false;
+    });
+  }
+
+  if (meta) {
+    if (metaMessage) {
+      meta.hidden = false;
+      meta.textContent = metaMessage;
+    } else {
+      meta.hidden = true;
+      meta.textContent = "";
+    }
+  }
+}
+
+function setAccuracyButtonsDisabled(section, disabled) {
+  section?.querySelectorAll(".accuracy-btn").forEach((button) => {
+    button.disabled = disabled;
+  });
+}
+
+async function recordListingAccuracy(listing, isAccurate) {
+  if (!listing || !canShowListingAccuracy(listing)) {
+    throw new Error("This listing cannot receive accuracy feedback right now.");
+  }
+
+  if (isUsingSupabase() && supabaseClient && !String(listing.id).startsWith("local-")) {
+    const { data, error } = await supabaseClient.rpc("record_listing_accuracy", {
+      p_toilet_id: String(listing.id),
+      p_is_accurate: Boolean(isAccurate)
+    });
+
+    if (error) {
+      throw new Error(error.message || "Could not save your response right now.");
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+
+    if (!row) {
+      throw new Error("Could not save your response right now.");
+    }
+
+    return {
+      confirmCount: row.confirm_count,
+      inaccurateCount: row.inaccurate_count,
+      lastConfirmedAt: row.last_confirmed_at
+    };
+  }
+
+  const nextCounts = {
+    confirmCount: listing.confirmCount || 0,
+    inaccurateCount: listing.inaccurateCount || 0,
+    lastConfirmedAt: listing.lastConfirmedAt
+  };
+
+  if (isAccurate) {
+    nextCounts.confirmCount += 1;
+    nextCounts.lastConfirmedAt = new Date().toISOString();
+  } else {
+    nextCounts.inaccurateCount += 1;
+  }
+
+  return nextCounts;
+}
+
+async function handleListingAccuracyResponse(listing, isAccurate, uiContext = {}) {
+  const listingId = listing?.id;
+
+  if (!listingId || !canShowListingAccuracy(listing)) {
+    return;
+  }
+
+  if (isAccuracyCooldownActive(listingId)) {
+    syncAccuracySection(uiContext.section, listing);
+    refreshListingPopup(listing);
+    return;
+  }
+
+  setAccuracyButtonsDisabled(uiContext.section, true);
+
+  try {
+    const result = await recordListingAccuracy(listing, isAccurate);
+    markAccuracyVote(listingId, isAccurate);
+    const updatedListing = applyAccuracyResultToListing(listingId, result);
+    syncAccuracySection(uiContext.section, updatedListing || listing);
+    refreshListingPopup(updatedListing || listing);
+    showToast(getAccuracyStatusMessage(isAccurate), "success");
+  } catch (error) {
+    setAccuracyButtonsDisabled(uiContext.section, false);
+    showToast(error.message || "Could not save your response right now.", "error");
+  }
+}
+
+function refreshListingPopup(listing) {
+  if (!map || !listing) {
+    return;
+  }
+
+  const marker = listingMarkerMap.get(listing);
+
+  if (!marker) {
+    return;
+  }
+
+  marker.setPopupContent(buildPopupMarkup(listing));
+}
+
+function bindAccuracyInteractions() {
+  if (elements.cardGrid) {
+    elements.cardGrid.addEventListener("click", (event) => {
+      const button = event.target.closest(".accuracy-btn[data-accuracy]");
+
+      if (!button) {
+        return;
+      }
+
+      event.stopPropagation();
+
+      const card = button.closest(".toilet-card");
+      const section = button.closest(".accuracy-section");
+      const listingId = card?.dataset.listingId;
+
+      if (!listingId) {
+        return;
+      }
+
+      const listing = findListingById(listingId);
+
+      if (!listing) {
+        return;
+      }
+
+      void handleListingAccuracyResponse(listing, button.dataset.accuracy === "yes", { section });
+    });
+  }
+
+  const mapElement = document.querySelector("#map");
+
+  if (mapElement) {
+    mapElement.addEventListener("click", (event) => {
+      const button = event.target.closest(".accuracy-btn[data-accuracy][data-toilet-id]");
+
+      if (!button) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const listing = findListingById(button.dataset.toiletId);
+
+      if (!listing) {
+        return;
+      }
+
+      void handleListingAccuracyResponse(listing, button.dataset.accuracy === "yes", {
+        section: button.closest(".accuracy-section")
+      });
+    });
+  }
+}
+
 function buildPopupMarkup(listing) {
   const feeText = listing.paymentRequired ? `Fee: PHP ${listing.fee || 0}` : "Free access";
 
@@ -1930,6 +2345,7 @@ function buildPopupMarkup(listing) {
         <span class="tag">Cleanliness ${listing.cleanliness}/5</span>
         ${listing.hasBidet && listing.pressureLevel ? `<span class="tag pressure-inline">${escapeHtml(getPressureSummary(listing.pressureLevel))}</span>` : ""}
       </div>
+      ${buildAccuracyBlockMarkup(listing)}
     </div>
   `;
 }
@@ -1938,8 +2354,11 @@ function normalizeListing(listing, index) {
   const fallback = getFallbackCoordinates(index);
   const latitude = Number(listing.latitude);
   const longitude = Number(listing.longitude);
+  const listingId = listing.id ?? listing.uuid ?? null;
+  const useLocalId = !listingId && !isUsingSupabase();
 
   return {
+    id: useLocalId ? `local-${index}` : listingId,
     name: String(listing.name || "Unnamed restroom").trim(),
     location: String(listing.location || "Location not provided").trim(),
     latitude: Number.isFinite(latitude) ? latitude : fallback.latitude,
@@ -1950,7 +2369,10 @@ function normalizeListing(listing, index) {
     pressureLevel: Boolean(listing.hasBidet) ? clampPressure(Number(listing.pressureLevel)) : null,
     paymentRequired: Boolean(listing.paymentRequired),
     fee: Math.max(0, Number(listing.fee) || 0),
-    notes: String(listing.notes || "No additional notes yet.").trim()
+    notes: String(listing.notes || "No additional notes yet.").trim(),
+    confirmCount: Math.max(0, Number(listing.confirmCount ?? listing.confirm_count) || 0),
+    inaccurateCount: Math.max(0, Number(listing.inaccurateCount ?? listing.inaccurate_count) || 0),
+    lastConfirmedAt: listing.lastConfirmedAt ?? listing.last_confirmed_at ?? null
   };
 }
 

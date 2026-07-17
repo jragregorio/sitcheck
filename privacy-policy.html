@@ -90,7 +90,7 @@
     <ul>
       <li><strong>Location data:</strong> If you allow location access, the app uses your device location to center the map, show your position on the map, and help you find nearby restroom listings. While the app is open and location is enabled, SitCheck may receive updated location readings from your device to keep your map position current and support features such as nearest listings. These updates are used on your device for display and are not sent to our servers unless you submit a restroom location using the contribution form.</li>
       <li><strong>Submitted restroom information:</strong> When you contribute a listing, the app may store the restroom name, location description, map coordinates, bidet availability, cleanliness rating, water pressure, payment requirement, fee, and notes you provide.</li>
-      <li><strong>Local app data:</strong> The app may use browser storage on your device for basic app behavior, such as remembering temporary map or session state and optional notification preferences.</li>
+      <li><strong>Local app data:</strong> The app may use browser storage on your device for basic app behavior, such as remembering temporary map or session state, optional notification preferences, and a local cooldown so you are not asked to confirm the same listing again within 24 hours.</li>
       <li><strong>Admin account data:</strong> Moderator/admin access, where available, uses Supabase authentication to manage submitted listings.</li>
     </ul>
 
@@ -102,6 +102,9 @@
 
     <h2>Contribution Reminders</h2>
     <p>Contribution reminders are on by default. SitCheck may schedule local notifications on your device to remind you to add restroom listings after you have not opened the app for about 12 hours. These reminders are scheduled and delivered on your device only. SitCheck does not use a push notification server for this feature, and you can turn reminders off anytime in About, which cancels pending reminders. Contribution reminders are separate from location access and are not used for continuous location tracking.</p>
+
+    <h2>Listing Accuracy Feedback</h2>
+    <p>You may optionally tap Yes or No when asked whether a public listing is still accurate. These responses are anonymous, do not require an account, and are stored with the listing as aggregate counts and timestamps (for example, how many users marked a listing accurate and when it was last confirmed). SitCheck does not attach your name, email, or precise location to an accuracy response.</p>
 
     <h2>Third-Party Services</h2>
     <p>SitCheck uses third-party services that may process information according to their own privacy policies:</p>

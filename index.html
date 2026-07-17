@@ -362,6 +362,16 @@
       <div class="tag-row"></div>
       <div class="pressure-row"></div>
       <p class="card-notes"></p>
+      <section class="accuracy-section" aria-label="Listing accuracy feedback" hidden>
+        <p class="accuracy-counts"></p>
+        <p class="accuracy-question">Listing still accurate?</p>
+        <div class="accuracy-actions" role="group" aria-label="Confirm listing accuracy">
+          <button type="button" class="button secondary accuracy-btn" data-accuracy="yes">Yes</button>
+          <button type="button" class="button secondary accuracy-btn" data-accuracy="no">No</button>
+        </div>
+        <p class="accuracy-status" hidden></p>
+        <p class="accuracy-meta" hidden></p>
+      </section>
       <div class="card-footer">
         <span class="card-fee"></span>
       </div>
@@ -378,6 +388,7 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""
   ></script>
+  <script src="contribution-reminders.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

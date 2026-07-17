@@ -64,6 +64,23 @@ System notifications remind users to add listings after about **12 hours** away 
 
 To disable: **About → Contribution reminders** → turn the toggle **off**. Nearby Suggestions (in-app chip) is separate and does not require this toggle.
 
+### Listing accuracy (Yes / No)
+
+Users can confirm whether a public listing is still accurate from listing cards and map popups.
+
+**One-time Supabase setup (production):**
+
+1. Open the Supabase SQL editor for your project.
+2. Run [`supabase/listing-accuracy.sql`](supabase/listing-accuracy.sql) to add count columns and the `record_listing_accuracy` RPC.
+3. Confirm the anon role can read the new columns on `toilets` and execute the RPC.
+
+**Testing:**
+
+1. Open a listing card or map pin popup.
+2. Tap **Yes** or **No** on *Listing still accurate?*
+3. The same device will not be prompted again for that listing for 24 hours (stored locally).
+4. In local/demo mode (no Supabase), counts update in browser storage only.
+
 ## Rebuild Android release bundle
 
 From the project root in PowerShell, set Java 17 (required by Gradle) and build the Play Console bundle:

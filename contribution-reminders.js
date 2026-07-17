@@ -301,7 +301,7 @@
 
     markContributionReminderNoticeSeen();
     showToastFn(
-      "Contribution reminders are on (~12h). Turn them off anytime in About.",
+      "Reminders on (~12h). Disable anytime in About.",
       "success"
     );
   }

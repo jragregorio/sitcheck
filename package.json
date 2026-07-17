@@ -1,6 +1,6 @@
 {
   "name": "sitcheck",
-  "version": "1.4.9",
+  "version": "1.5.2",
   "description": "Toilet location and bidet availability. Because why not?",
   "main": "admin.js",
   "scripts": {

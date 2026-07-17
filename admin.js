@@ -40,7 +40,7 @@ const elements = {
   signInButton: document.querySelector("#sign-in-button"),
   signOutButton: document.querySelector("#sign-out-button"),
   refreshButton: document.querySelector("#refresh-button"),
-  queueFilter: document.querySelector("#queue-filter"),
+  queueFilterButtons: document.querySelectorAll("[data-queue-filter]"),
   queueSearch: document.querySelector("#queue-search"),
   queueList: document.querySelector("#queue-list"),
   sessionLabel: document.querySelector("#session-label"),
@@ -107,10 +107,20 @@ function bindEvents() {
     void loadQueue();
   });
 
-  elements.queueFilter.addEventListener("change", () => {
-    state.queueFilter = elements.queueFilter.value;
-    void loadQueue();
+  elements.queueFilterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextFilter = button.dataset.queueFilter || "pending";
+      if (state.queueFilter === nextFilter) {
+        return;
+      }
+
+      state.queueFilter = nextFilter;
+      syncQueueFilterButtons();
+      void loadQueue();
+    });
   });
+
+  syncQueueFilterButtons();
 
   if (elements.queueSearch) {
     elements.queueSearch.addEventListener("input", () => {
@@ -120,6 +130,14 @@ function bindEvents() {
   }
 
   bindReviewConfirmEvents();
+}
+
+function syncQueueFilterButtons() {
+  elements.queueFilterButtons.forEach((button) => {
+    const isActive = button.dataset.queueFilter === state.queueFilter;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
 }
 
 function bindReviewConfirmEvents() {
@@ -257,7 +275,8 @@ async function loadQueue(options = {}) {
 
   try {
     const records = await fetchSubmissions();
-    renderQueue(filterQueueRecords(records));
+    const withAccuracy = await attachAccuracyCounts(records);
+    renderQueue(filterQueueRecords(withAccuracy));
   } catch (error) {
     renderQueue([]);
     showStatus(error.message || "Could not load submissions.", true);
@@ -320,6 +339,113 @@ async function querySubmissions(fields, allowStatusFilter) {
   return { data, error };
 }
 
+async function attachAccuracyCounts(records) {
+  if (!Array.isArray(records) || !records.length || !supabaseClient) {
+    return records || [];
+  }
+
+  const submissionIds = records.map((record) => record.id).filter(Boolean);
+
+  if (!submissionIds.length) {
+    return records.map((record) => ({
+      ...record,
+      confirm_count: null,
+      inaccurate_count: null,
+      last_confirmed_at: null,
+      accuracyLinked: false
+    }));
+  }
+
+  const accuracyBySubmissionId = new Map();
+
+  try {
+    const bySubmissionId = await supabaseClient
+      .from(SUPABASE_TABLES.toilets)
+      .select("submission_id, source_submission_id, confirm_count, inaccurate_count, last_confirmed_at")
+      .in("submission_id", submissionIds);
+
+    if (!bySubmissionId.error && Array.isArray(bySubmissionId.data)) {
+      bySubmissionId.data.forEach((row) => {
+        if (row.submission_id != null) {
+          accuracyBySubmissionId.set(String(row.submission_id), row);
+        }
+      });
+    }
+
+    const missingIds = submissionIds.filter((id) => !accuracyBySubmissionId.has(String(id)));
+
+    if (missingIds.length) {
+      const bySourceId = await supabaseClient
+        .from(SUPABASE_TABLES.toilets)
+        .select("submission_id, source_submission_id, confirm_count, inaccurate_count, last_confirmed_at")
+        .in("source_submission_id", missingIds.map(String));
+
+      if (!bySourceId.error && Array.isArray(bySourceId.data)) {
+        bySourceId.data.forEach((row) => {
+          const key = row.source_submission_id != null
+            ? String(row.source_submission_id)
+            : row.submission_id != null
+              ? String(row.submission_id)
+              : null;
+
+          if (key && !accuracyBySubmissionId.has(key)) {
+            accuracyBySubmissionId.set(key, row);
+          }
+        });
+      }
+    }
+  } catch {
+    // Accuracy columns/RPC may not be applied yet; still render the queue.
+  }
+
+  return records.map((record) => {
+    const accuracy = accuracyBySubmissionId.get(String(record.id));
+
+    if (!accuracy) {
+      return {
+        ...record,
+        confirm_count: null,
+        inaccurate_count: null,
+        last_confirmed_at: null,
+        accuracyLinked: false
+      };
+    }
+
+    return {
+      ...record,
+      confirm_count: Math.max(0, Number(accuracy.confirm_count) || 0),
+      inaccurate_count: Math.max(0, Number(accuracy.inaccurate_count) || 0),
+      last_confirmed_at: accuracy.last_confirmed_at || null,
+      accuracyLinked: true
+    };
+  });
+}
+
+function getAccuracyFeedbackText(record) {
+  if (record.accuracyLinked) {
+    const yesCount = Math.max(0, Number(record.confirm_count) || 0);
+    const noCount = Math.max(0, Number(record.inaccurate_count) || 0);
+    return `Accuracy feedback: ${yesCount} Yes ${noCount} No`;
+  }
+
+  if ((record.status || "").toLowerCase() === "approved") {
+    return "Accuracy feedback: no live listing linked";
+  }
+
+  return "Accuracy feedback: not published yet";
+}
+
+function getLastConfirmedText(record) {
+  if (!record.accuracyLinked || !record.last_confirmed_at) {
+    return "";
+  }
+
+  const confirmedAt = new Date(record.last_confirmed_at);
+  return Number.isNaN(confirmedAt.getTime())
+    ? ""
+    : `Last confirmed ${confirmedAt.toLocaleString()}`;
+}
+
 function renderQueue(records) {
   elements.queueList.innerHTML = "";
   state.editingSubmissionId = null;
@@ -352,6 +478,15 @@ function renderQueue(records) {
     meta.appendChild(createTag(`Cleanliness ${Number(record.cleanliness) || 0}/5`));
     meta.appendChild(createTag(`Pressure ${Number(record.pressure_level) || 0}/5`));
     meta.appendChild(createTag(record.payment_required ? `Fee PHP ${Number(record.fee) || 0}` : "Free"));
+
+    const accuracy = document.createElement("p");
+    accuracy.className = "accuracy-counts";
+    accuracy.textContent = getAccuracyFeedbackText(record);
+
+    const lastConfirmed = document.createElement("p");
+    lastConfirmed.className = "accuracy-last-confirmed";
+    lastConfirmed.textContent = getLastConfirmedText(record);
+    lastConfirmed.hidden = !lastConfirmed.textContent;
 
     const notes = document.createElement("p");
     notes.textContent = record.notes || "No notes provided.";
@@ -405,7 +540,7 @@ function renderQueue(records) {
     });
 
     actions.append(editButton, approveButton, rejectButton);
-    card.append(title, location, snapshot, meta, notes, submitted, actions, editPanel);
+    card.append(title, location, snapshot, meta, accuracy, lastConfirmed, notes, submitted, actions, editPanel);
     elements.queueList.appendChild(card);
   });
 }

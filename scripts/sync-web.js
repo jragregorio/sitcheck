@@ -11,6 +11,7 @@ const filesToCopy = [
   "CHANGELOG.md",
   "app.js",
   "admin.js",
+  "contribution-reminders.js",
   "styles.css",
   "config.js"
 ];

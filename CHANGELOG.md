@@ -2,6 +2,22 @@
 
 Version format: **MAJOR.MINOR.PATCH** with PATCH **1–9 only**. When PATCH would hit 10, carry to MINOR (e.g. `1.2.11` → `1.3.1`). Use `npm run bump:version` for releases.
 
+## [1.5.2] - 2026-07-17
+
+### Added
+- **Listing cards:** show public accuracy totals (`Accuracy feedback: X Yes · Y No`) on each card; counts update immediately after a response.
+- **Moderator console:** queue cards show Yes/No accuracy totals from the linked live `toilets` row (or “not published yet” / “no live listing linked”).
+
+### Fixed
+- Splash screen could stay visible after the accuracy update (`isSupabaseDataMode` reference error).
+- Accuracy toast notifications: centered, content-width, and single-line formatting.
+
+## [1.5.1] - 2026-07-17
+
+### Added
+- **Listing accuracy:** Yes/No *Listing still accurate?* on listing cards and map popups, with aggregate counts on `toilets`, secure Supabase RPC (`record_listing_accuracy`), and a 24-hour per-device cooldown.
+- SQL setup script: `supabase/listing-accuracy.sql`.
+
 ## [1.4.9] - 2026-07-17
 
 ### Changed
