@@ -2,6 +2,12 @@
 
 Version format: **MAJOR.MINOR.PATCH** with PATCH **1–9 only**. When PATCH would hit 10, carry to MINOR (e.g. `1.2.11` → `1.3.1`). Use `npm run bump:version` for releases.
 
+## [1.5.3] - 2026-07-17
+
+### Fixed
+- **Dropdowns (Android):** replaced native `<select>` pickers with compact in-app menus so Bidet/Payment/Cleanliness filters and form selects no longer show the app icon or oversized option rows.
+- **Moderator console:** compact mobile header and button-row queue filters (Pending/Approved/Rejected/All).
+
 ## [1.5.2] - 2026-07-17
 
 ### Added

@@ -1651,6 +1651,7 @@ function syncFilterUI() {
   elements.bidetFilter.value = state.filters.bidet;
   elements.paymentFilter.value = state.filters.payment;
   elements.cleanlinessFilter.value = String(state.filters.cleanliness);
+  window.SitCheckCustomSelect?.refreshAll();
   elements.clearFiltersButton.hidden = !hasActiveFilters();
 }
 
