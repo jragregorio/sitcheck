@@ -1359,8 +1359,40 @@ h2 {
 }
 
 .card-notes {
-  min-height: 48px;
-  line-height: 1.6;
+  margin: 8px 0 0;
+  line-height: 1.55;
+}
+
+.card-notes-block {
+  display: grid;
+  gap: 0;
+  justify-items: start;
+}
+
+.card-notes-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(36, 87, 245, 0.18);
+  border-radius: 999px;
+  background: rgba(36, 87, 245, 0.08);
+  color: var(--primary-dark);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.card-notes-toggle[aria-expanded="true"] {
+  background: rgba(36, 87, 245, 0.14);
+}
+
+.popup-notes {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .card-footer {

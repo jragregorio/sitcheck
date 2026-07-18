@@ -2,6 +2,11 @@
 
 Version format: **MAJOR.MINOR.PATCH** with PATCH **1–9 only**. When PATCH would hit 10, carry to MINOR (e.g. `1.2.11` → `1.3.1`). Use `npm run bump:version` for releases.
 
+## [1.5.9] - 2026-07-18
+
+### Changed
+- **Listing cards:** hide empty notes; when notes exist, show a compact **Notes** control that expands inline. Map popups still show notes when available.
+
 ## [1.5.8] - 2026-07-18
 
 ### Changed

@@ -1379,10 +1379,26 @@ function renderCards(listings) {
     fragment.querySelector(".card-title").textContent = listing.name;
     fragment.querySelector(".card-location").textContent = listing.location;
     fragment.querySelector(".cleanliness-badge").textContent = `Cleanliness ${listing.cleanliness}/5`;
-    fragment.querySelector(".card-notes").textContent = listing.notes;
     fragment.querySelector(".card-fee").textContent = listing.paymentRequired
       ? `Fee required: PHP ${listing.fee || 0}`
       : "Free access";
+
+    const notesBlock = fragment.querySelector(".card-notes-block");
+    const notesToggle = fragment.querySelector(".card-notes-toggle");
+    const notesText = fragment.querySelector(".card-notes");
+    const listingNotes = getListingNotes(listing);
+
+    if (listingNotes && notesBlock && notesToggle && notesText) {
+      notesBlock.hidden = false;
+      notesText.textContent = listingNotes;
+      notesToggle.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const isExpanded = notesToggle.getAttribute("aria-expanded") === "true";
+        notesToggle.setAttribute("aria-expanded", String(!isExpanded));
+        notesText.hidden = isExpanded;
+      });
+    }
 
     const tagRow = fragment.querySelector(".tag-row");
     tagRow.appendChild(buildTag(listing.hasBidet ? "Bidet available" : "No bidet"));
@@ -1396,7 +1412,7 @@ function renderCards(listings) {
     syncAccuracySection(fragment.querySelector(".accuracy-section"), listing);
 
     card.addEventListener("click", (event) => {
-      if (event.target.closest(".accuracy-section")) {
+      if (event.target.closest(".accuracy-section, .card-notes-block")) {
         return;
       }
 
@@ -2408,6 +2424,10 @@ function bindAccuracyInteractions() {
 
 function buildPopupMarkup(listing) {
   const feeText = listing.paymentRequired ? `Fee: PHP ${listing.fee || 0}` : "Free access";
+  const listingNotes = getListingNotes(listing);
+  const notesMarkup = listingNotes
+    ? `<p class="popup-notes">${escapeHtml(listingNotes)}</p>`
+    : "";
 
   return `
     <div class="map-popup">
@@ -2420,9 +2440,20 @@ function buildPopupMarkup(listing) {
         <span class="tag">Cleanliness ${listing.cleanliness}/5</span>
         ${listing.hasBidet && listing.pressureLevel ? `<span class="tag pressure-inline">${escapeHtml(getPressureSummary(listing.pressureLevel))}</span>` : ""}
       </div>
+      ${notesMarkup}
       ${buildAccuracyBlockMarkup(listing)}
     </div>
   `;
+}
+
+function getListingNotes(listing) {
+  const notes = String(listing?.notes || "").trim();
+
+  if (!notes || /^no additional notes yet\.?$/i.test(notes)) {
+    return "";
+  }
+
+  return notes;
 }
 
 function normalizeListing(listing, index) {
@@ -2431,6 +2462,7 @@ function normalizeListing(listing, index) {
   const longitude = Number(listing.longitude);
   const listingId = listing.id ?? listing.uuid ?? null;
   const useLocalId = !listingId && !isUsingSupabase();
+  const notes = getListingNotes({ notes: listing.notes });
 
   return {
     id: useLocalId ? `local-${index}` : listingId,
@@ -2444,7 +2476,7 @@ function normalizeListing(listing, index) {
     pressureLevel: Boolean(listing.hasBidet) ? clampPressure(Number(listing.pressureLevel)) : null,
     paymentRequired: Boolean(listing.paymentRequired),
     fee: Math.max(0, Number(listing.fee) || 0),
-    notes: String(listing.notes || "No additional notes yet.").trim(),
+    notes,
     confirmCount: Math.max(0, Number(listing.confirmCount ?? listing.confirm_count) || 0),
     inaccurateCount: Math.max(0, Number(listing.inaccurateCount ?? listing.inaccurate_count) || 0),
     lastConfirmedAt: listing.lastConfirmedAt ?? listing.last_confirmed_at ?? null

@@ -397,10 +397,13 @@
         </div>
         <span class="cleanliness-badge"></span>
       </div>
-      <div class="tag-row"></div>
-      <div class="pressure-row"></div>
-      <p class="card-notes"></p>
-      <section class="accuracy-section" aria-label="Listing accuracy feedback" hidden>
+          <div class="tag-row"></div>
+          <div class="pressure-row"></div>
+          <div class="card-notes-block" hidden>
+            <button type="button" class="card-notes-toggle" aria-expanded="false">Notes</button>
+            <p class="card-notes" hidden></p>
+          </div>
+          <section class="accuracy-section" aria-label="Listing accuracy feedback" hidden>
         <p class="accuracy-counts"></p>
         <p class="accuracy-question">Listing still accurate?</p>
         <div class="accuracy-actions" role="group" aria-label="Confirm listing accuracy">
