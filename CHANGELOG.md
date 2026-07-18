@@ -2,6 +2,11 @@
 
 Version format: **MAJOR.MINOR.PATCH** with PATCH **1–9 only**. When PATCH would hit 10, carry to MINOR (e.g. `1.2.11` → `1.3.1`). Use `npm run bump:version` for releases.
 
+## [1.5.8] - 2026-07-18
+
+### Changed
+- **Listings and Add (mobile):** taller sheets — Listings up to ~55% and Add a toilet up to ~65% of the screen — so browsing cards and filling the contribution form need less scrolling while the map stays visible.
+
 ## [1.5.7] - 2026-07-18
 
 ### Changed
