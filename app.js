@@ -171,6 +171,8 @@ const elements = {
   paymentFilter: document.querySelector("#payment-filter"),
   cleanlinessFilter: document.querySelector("#cleanliness-filter"),
   clearFiltersButton: document.querySelector("#clear-filters"),
+  filterResultsCount: document.querySelector("#filter-results-count"),
+  viewFilterResultsButton: document.querySelector("#view-filter-results"),
   sortButtons: document.querySelectorAll("[data-sort-option]"),
   totalCount: document.querySelector("#total-count"),
   bidetCount: document.querySelector("#bidet-count"),
@@ -456,6 +458,12 @@ function bindEvents() {
     resetFilters();
     render();
   });
+
+  if (elements.viewFilterResultsButton) {
+    elements.viewFilterResultsButton.addEventListener("click", () => {
+      showFilteredResultsOnMap();
+    });
+  }
 
   elements.sortButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -1689,6 +1697,20 @@ function syncFilterUI() {
   elements.cleanlinessFilter.value = String(state.filters.cleanliness);
   window.SitCheckCustomSelect?.refreshAll();
   elements.clearFiltersButton.hidden = !hasActiveFilters();
+
+  const matchCount = getFilteredListings().length;
+  const resultLabel = matchCount === 1 ? "toilet" : "toilets";
+
+  if (elements.filterResultsCount) {
+    elements.filterResultsCount.textContent = hasActiveFilters()
+      ? `${matchCount} matching ${resultLabel}.`
+      : `All ${matchCount} ${resultLabel} are shown.`;
+  }
+
+  if (elements.viewFilterResultsButton) {
+    elements.viewFilterResultsButton.textContent =
+      matchCount === 1 ? "View 1 result on map" : `View ${matchCount} results on map`;
+  }
 }
 
 function syncSortUI() {
@@ -1727,6 +1749,22 @@ function resetFilters() {
   state.filters.bidet = "any";
   state.filters.payment = "any";
   state.filters.cleanliness = 0;
+}
+
+function showFilteredResultsOnMap() {
+  if (!isMobileViewport()) {
+    return;
+  }
+
+  state.ui.mobileTab = null;
+  syncAreaNudgeMapViewState();
+  updateMobileUI();
+  refreshHeroSummary();
+  ensureHeroCompactMode();
+
+  requestAnimationFrame(() => {
+    map?.invalidateSize();
+  });
 }
 
 function getDistanceFromUser(listing) {

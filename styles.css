@@ -869,11 +869,25 @@ h2 {
 }
 
 .filters-actions {
+  display: grid;
+  gap: 10px;
   margin-top: 14px;
 }
 
 .filters-actions .button {
   width: 100%;
+}
+
+.filter-results-count {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.mobile-filter-results {
+  display: none;
 }
 
 .listing-controls {
@@ -1593,6 +1607,24 @@ h2 {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0);
+  }
+
+  #filters-panel.mobile-panel {
+    max-height: min(68vh, 620px);
+    max-height: min(68dvh, 620px, calc(100dvh - 116px));
+  }
+
+  #filters-panel .filters-actions {
+    position: sticky;
+    bottom: -1px;
+    z-index: 2;
+    padding-top: 12px;
+    padding-bottom: 2px;
+    background: var(--panel-strong);
+  }
+
+  .mobile-filter-results {
+    display: inline-flex;
   }
 
   .mobile-sheet-nav {

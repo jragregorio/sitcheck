@@ -84,7 +84,7 @@
               <p class="section-kicker">Filter listings</p>
               <h2>Quick restroom search</h2>
             </div>
-            <p class="section-note">Everything stays visible while the map remains the main canvas.</p>
+            <p class="section-note">Choose what you need, then view the matching pins on the map.</p>
           </div>
 
           <div class="filters">
@@ -123,6 +123,12 @@
           </div>
 
           <div class="filters-actions">
+            <p id="filter-results-count" class="filter-results-count" role="status" aria-live="polite">
+              All toilets are shown.
+            </p>
+            <button id="view-filter-results" type="button" class="button primary mobile-filter-results">
+              View results on map
+            </button>
             <button id="clear-filters" type="button" class="button secondary filter-reset-button" hidden>Clear filters</button>
           </div>
         </section>
