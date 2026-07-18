@@ -1379,9 +1379,11 @@ function renderCards(listings) {
     fragment.querySelector(".card-title").textContent = listing.name;
     fragment.querySelector(".card-location").textContent = listing.location;
     fragment.querySelector(".cleanliness-badge").textContent = `Cleanliness ${listing.cleanliness}/5`;
-    fragment.querySelector(".card-fee").textContent = listing.paymentRequired
+    const feeElement = fragment.querySelector(".card-fee");
+    feeElement.textContent = listing.paymentRequired
       ? `Fee required: PHP ${listing.fee || 0}`
       : "Free access";
+    feeElement.classList.add(listing.paymentRequired ? "is-paid" : "is-free");
 
     const notesBlock = fragment.querySelector(".card-notes-block");
     const notesToggle = fragment.querySelector(".card-notes-toggle");
@@ -1403,7 +1405,12 @@ function renderCards(listings) {
     const tagRow = fragment.querySelector(".tag-row");
     tagRow.appendChild(buildTag(listing.hasBidet ? "Bidet available" : "No bidet"));
     tagRow.appendChild(buildTag(listing.hasTissue ? "Tissue available" : "No tissue"));
-    tagRow.appendChild(buildTag(listing.paymentRequired ? "Paid entry" : "Free entry", listing.paymentRequired));
+    tagRow.appendChild(
+      buildTag(
+        listing.paymentRequired ? "Paid entry" : "Free entry",
+        listing.paymentRequired ? "warning" : "success"
+      )
+    );
     if (listing.hasBidet && listing.pressureLevel) {
       fragment.querySelector(".pressure-row").appendChild(buildPressureBadge(listing.pressureLevel));
     }
@@ -2043,9 +2050,9 @@ function getFilteredListings() {
   });
 }
 
-function buildTag(text, warning = false) {
+function buildTag(text, variant = "") {
   const tag = document.createElement("span");
-  tag.className = warning ? "tag warning" : "tag";
+  tag.className = variant ? `tag ${variant}` : "tag";
   tag.textContent = text;
   return tag;
 }
@@ -2436,7 +2443,7 @@ function buildPopupMarkup(listing) {
       <div class="popup-meta">
         <span class="tag">${listing.hasBidet ? "Bidet available" : "No bidet"}</span>
         <span class="tag">${listing.hasTissue ? "Tissue available" : "No tissue"}</span>
-        <span class="tag">${feeText}</span>
+        <span class="tag ${listing.paymentRequired ? "warning" : "success"}">${feeText}</span>
         <span class="tag">Cleanliness ${listing.cleanliness}/5</span>
         ${listing.hasBidet && listing.pressureLevel ? `<span class="tag pressure-inline">${escapeHtml(getPressureSummary(listing.pressureLevel))}</span>` : ""}
       </div>

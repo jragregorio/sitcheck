@@ -2,6 +2,14 @@
 
 Version format: **MAJOR.MINOR.PATCH** with PATCH **1–9 only**. When PATCH would hit 10, carry to MINOR (e.g. `1.2.11` → `1.3.1`). Use `npm run bump:version` for releases.
 
+## [1.6.1] - 2026-07-18
+
+### Changed
+- **Listing cards and popups:** the entry tag is now color-coded — green for **Free entry**, amber for **Paid entry** — and the card footer text (Free access / Fee required) is tinted to match.
+
+### Fixed
+- **Listing cards:** accuracy feedback section now has even spacing above and below.
+
 ## [1.5.9] - 2026-07-18
 
 ### Changed

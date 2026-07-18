@@ -11,6 +11,8 @@
   --accent-soft: #d9f8f4;
   --warning-soft: #fff2d7;
   --warning-text: #9a5d00;
+  --success-soft: #e6f8ef;
+  --success-text: #0b6b4a;
   --shadow: 0 20px 50px rgba(19, 34, 56, 0.14);
   font-family: "Inter", sans-serif;
 }
@@ -802,12 +804,14 @@ h2 {
 .accuracy-section {
   margin-top: 14px;
   padding-top: 14px;
+  padding-bottom: 14px;
   border-top: 1px solid #edf2f7;
 }
 
 .accuracy-section-popup {
   margin-top: 12px;
   padding-top: 12px;
+  padding-bottom: 0;
 }
 
 .accuracy-question {
@@ -1323,6 +1327,19 @@ h2 {
 
 .tag.warning {
   background: var(--warning-soft);
+  color: var(--warning-text);
+}
+
+.tag.success {
+  background: var(--success-soft);
+  color: var(--success-text);
+}
+
+.card-fee.is-free {
+  color: var(--success-text);
+}
+
+.card-fee.is-paid {
   color: var(--warning-text);
 }
 
